@@ -1,12 +1,12 @@
 import type { GameDatabase } from '../db.js'
-import { esc } from '../html.js'
+import { escapeHtml } from '../html.js'
 import type { Session } from '../session.js'
-import { meta } from './psql.js'
+import { runPsqlCommand } from './psql.js'
 
 const REFUSED = /^\s*(reset|set\s+(role|session)|begin|start|commit|end|rollback|abort|savepoint|release)\b/i
 
 type ResultRow = Record<string, unknown>
-type TableResult = {
+type ConsoleResult = {
   title: string
   rows: ResultRow[]
   link?: { column: string; command: string }
@@ -28,9 +28,9 @@ export function mountConsole({
   history: { add(who: string, sql: string): void }
   schedule: (fn: () => Promise<void>) => void
 }): { isTyping: () => boolean } {
-  const run = (text: string): void => schedule(() => runNow(text))
+  const scheduleConsoleInput = (text: string): void => schedule(() => executeConsoleInput(text))
 
-  async function runNow(text: string): Promise<void> {
+  async function executeConsoleInput(text: string): Promise<void> {
     if (!text.trim()) {
       return
     }
@@ -42,12 +42,12 @@ export function mountConsole({
     try {
       const results = await session.attempt(async () =>
         text.startsWith('\\')
-          ? meta(db, text)
+          ? runPsqlCommand(db, text)
           : db.rows(text).then((rows) => [{ title: `${rows.length} rows`, rows }]))
-      output.innerHTML = results.map(table).join('')
+      output.innerHTML = results.map(renderConsoleResult).join('')
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      output.innerHTML = `<p class="err">ERROR: ${esc(message)}</p>`
+      output.innerHTML = `<p class="err">ERROR: ${escapeHtml(message)}</p>`
     }
   }
 
@@ -66,7 +66,7 @@ export function mountConsole({
       }
       cursor = typed.length
       input.value = ''
-      run(text)
+      scheduleConsoleInput(text)
     }
   })
 
@@ -77,30 +77,30 @@ export function mountConsole({
       return
     }
     event.preventDefault()
-    run(cmd)
+    scheduleConsoleInput(cmd)
   })
 
   return { isTyping: () => document.activeElement === input }
 }
 
-function table({ title, rows, link, pre }: TableResult): string {
-  const heading = `<h4>${esc(title)}</h4>`
+function renderConsoleResult({ title, rows, link, pre }: ConsoleResult): string {
+  const heading = `<h4>${escapeHtml(title)}</h4>`
   if (!rows.length) {
     return `${heading}<p>(no rows)</p>`
   }
   if (pre) {
-    return `${heading}<pre>${esc(Object.values(rows[0])[0])}</pre>`
+    return `${heading}<pre>${escapeHtml(Object.values(rows[0])[0])}</pre>`
   }
 
   const cols = Object.keys(rows[0])
-  const cell = (column: string, value: unknown): string => {
+  const renderConsoleCell = (column: string, value: unknown): string => {
     const text = typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)
     return link?.column === column
-      ? `<a href="#" data-run="${esc(`${link.command} ${text}`)}">${esc(text)}</a>`
-      : esc(text)
+      ? `<a href="#" data-run="${escapeHtml(`${link.command} ${text}`)}">${escapeHtml(text)}</a>`
+      : escapeHtml(text)
   }
   return `${heading}<table>
-    <tr>${cols.map((column) => `<th>${esc(column)}</th>`).join('')}</tr>
-    ${rows.map((row) => `<tr>${cols.map((column) => `<td>${cell(column, row[column])}</td>`).join('')}</tr>`).join('')}
+    <tr>${cols.map((column) => `<th>${escapeHtml(column)}</th>`).join('')}</tr>
+    ${rows.map((row) => `<tr>${cols.map((column) => `<td>${renderConsoleCell(column, row[column])}</td>`).join('')}</tr>`).join('')}
   </table>`
 }

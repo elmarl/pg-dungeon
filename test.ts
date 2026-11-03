@@ -3,7 +3,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { readFileSync, readdirSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import type { GameDatabase } from './src/db.js'
-import { meta } from './src/console/psql.js'
+import { runPsqlCommand } from './src/console/psql.js'
 
 const db = new PGlite()
 for (const fileName of readdirSync('src/sql').sort()) {
@@ -55,10 +55,12 @@ assert.equal(tiles.filter((tile) => tile.style === 'hero').length, 1, 'exactly o
 
 const rows: GameDatabase['rows'] = async (sql, params) => (await db.query(sql, params)).rows as any[]
 for (const cmd of ['\\?', '\\dn', '\\dt', '\\dt creature', '\\d creature.thing', '\\d map.cell', '\\d screen.tiles', '\\d creature.scent', '\\df', '\\sf game.move']) {
-  const results = (await meta({ rows }, cmd)) as Array<{ rows: Array<Record<string, unknown>> }>
+  const results = (await runPsqlCommand({ rows }, cmd)) as Array<{ rows: Array<Record<string, unknown>> }>
   assert.ok(results.every((result) => result.rows.length), `${cmd} returns rows`)
 }
-const fog = ((await meta({ rows }, '\\d creature.thing')) as Array<{ title: string; rows: Array<Record<string, unknown>> }>).find((result) => result.title === 'Row-level security')!
+const functions = (await runPsqlCommand({ rows }, '\\df'))[0].rows
+assert.ok(functions.some((fn) => fn.name === 'game.remember_seen_cells'), 'function name describes its behavior')
+const fog = ((await runPsqlCommand({ rows }, '\\d creature.thing')) as Array<{ title: string; rows: Array<Record<string, unknown>> }>).find((result) => result.title === 'Row-level security')!
 assert.match(String((fog.rows[0] as Record<string, unknown>)['visible when']), /in_sight/, 'player can read the fog policy')
 console.log('10 psql commands work as player')
 

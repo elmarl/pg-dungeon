@@ -1,13 +1,13 @@
 import type { GameDatabase } from './db.js'
-import { esc } from './html.js'
+import { escapeHtml } from './html.js'
 
 export async function render(
   db: GameDatabase,
-  getElement: (id: string) => HTMLElement | null,
+  getElementById: (id: string) => HTMLElement | null,
 ): Promise<void> {
-  const mapEl = getElement('map')
-  const hudEl = getElement('hud')
-  const logEl = getElement('log')
+  const mapEl = getElementById('map')
+  const hudEl = getElementById('hud')
+  const logEl = getElementById('log')
   if (!mapEl || !hudEl || !logEl) {
     return
   }
@@ -18,10 +18,10 @@ export async function render(
 
   const grid = Array.from({ length: status.height }, () => Array(status.width).fill(' '))
   for (const tile of tiles) {
-    grid[tile.y][tile.x] = `<span class="${tile.style}">${esc(tile.glyph)}</span>`
+    grid[tile.y][tile.x] = `<span class="${tile.style}">${escapeHtml(tile.glyph)}</span>`
   }
 
   mapEl.innerHTML = grid.map((mapRow) => mapRow.join('')).join('\n')
   hudEl.textContent = `HP ${status.hp}   turn ${status.turn}   rewinds ${status.rewinds}`
-  logEl.innerHTML = messages.map((message, index) => `<div style="opacity:${1 - index * 0.15}">${esc(message.msg)}</div>`).join('')
+  logEl.innerHTML = messages.map((message, index) => `<div style="opacity:${1 - index * 0.15}">${escapeHtml(message.msg)}</div>`).join('')
 }

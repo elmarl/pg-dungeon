@@ -69,9 +69,9 @@ const HELP = [
 ]
 
 type TableRow = Record<string, unknown>
-type MetaResult = { title: string; rows: TableRow[]; link?: { column: string; command: string }; pre?: boolean }
+type PsqlResult = { title: string; rows: TableRow[]; link?: { column: string; command: string }; pre?: boolean }
 
-export async function meta(db: Pick<GameDatabase, 'rows'>, input: string): Promise<MetaResult[]> {
+export async function runPsqlCommand(db: Pick<GameDatabase, 'rows'>, input: string): Promise<PsqlResult[]> {
   const [cmd, arg] = input.trim().split(/\s+/)
   const queryRows = (sql: string, params?: unknown[]) => db.rows(sql, params)
 
@@ -88,7 +88,7 @@ export async function meta(db: Pick<GameDatabase, 'rows'>, input: string): Promi
       return [{ title: `Function ${arg}`, rows: await queryRows(SOURCE, [arg]), pre: true }]
     case '\\d': {
       if (!arg) {
-        return meta(db, '\\dt')
+        return runPsqlCommand(db, '\\dt')
       }
       const [{ kind }] = (await queryRows('select relkind as kind from pg_class where oid = $1::regclass', [arg])) as Array<{ kind: string }>
       if (kind === 'v' || kind === 'm') {

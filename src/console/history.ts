@@ -1,4 +1,4 @@
-import { esc } from '../html.js'
+import { escapeHtml } from '../html.js'
 
 export interface HistoryPanel {
   add(who: string, sql: string): void
@@ -11,7 +11,7 @@ export function createHistory(el: HTMLElement, limit = 60): HistoryPanel {
     add(who: string, sql: string): void {
       entries.unshift({ who, sql })
       entries.length = Math.min(entries.length, limit)
-      el.innerHTML = entries.map((entry) => `<div class="${entry.who}"><span>${entry.who}</span>${esc(entry.sql)}</div>`).join('')
+      el.innerHTML = entries.map((entry) => `<div class="${entry.who}"><span>${entry.who}</span>${escapeHtml(entry.sql)}</div>`).join('')
     },
   }
 }

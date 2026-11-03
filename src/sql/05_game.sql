@@ -6,7 +6,7 @@ comment on schema game is 'The only door in: new game, move, rewind, and the pla
 create role player;
 
 -- Remember every cell the hero can see right now.
-create function game.look() returns void
+create function game.remember_seen_cells() returns void
 language sql
 as $$
   insert into map.seen select x, y from map.cell where creature.in_sight(x, y)
@@ -21,7 +21,7 @@ declare
 begin
   perform creature.spawn_hero(start);
   perform creature.spawn_monsters(10, start);
-  perform game.look();
+  perform game.remember_seen_cells();
   perform clock.say('You wake up in a cave. Something is breathing.');
 end $$;
 
@@ -44,7 +44,7 @@ begin
   end;
 
   perform clock.tick();
-  perform game.look();
+  perform game.remember_seen_cells();
   perform creature.monsters_act();
   return true;
 end $$;

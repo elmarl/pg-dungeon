@@ -24,3 +24,7 @@
 ## Checks
 
 - Run `npm run lint`, `npm test`, and `npx tsc --noEmit` for TypeScript changes.
+
+## Commits
+
+- Before committing, make sure the tests pass and TypeScript compiles without errors. The pre-commit hook runs `npm test` and `npx tsc --noEmit`; do not commit if either check fails.

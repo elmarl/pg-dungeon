@@ -7,7 +7,8 @@
     "test": "tsx --test test/*.test.ts",
     "lint": "eslint src test",
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "eslint": "^10.14.0",
+    "husky": "^9.1.7",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.1",

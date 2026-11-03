@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pg-dungeon</title>
+  <style>
+    :root { --bg: #0f0e0c; --panel: #171613; --fg: #d8d2c4; --dim: #4a463f; --lit: #8f8778; --hero: #f2c14e; --rat: #b5a58a; --ogre: #e0603f; --you: #7fb4d8; }
+    body { background: var(--bg); color: var(--fg); font: 14px/1.35 ui-monospace, Menlo, monospace; margin: 0; padding: 24px 16px; }
+    main { max-width: 1400px; margin: auto; display: grid; gap: 24px; grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
+    @media (max-width: 1000px) { main { grid-template-columns: minmax(0, 1fr); } }
+    section { display: grid; gap: 12px; align-content: start; min-width: 0; }
+
+    #map { margin: 0; font-size: 18px; line-height: 1.05; letter-spacing: 0.15em; overflow-x: auto; }
+    .remembered { color: var(--dim); }
+    .lit { color: var(--lit); }
+    .hero { color: var(--hero); font-weight: bold; }
+    .rat { color: var(--rat); }
+    .ogre { color: var(--ogre); font-weight: bold; }
+    #hud { color: var(--hero); }
+    #log { min-height: 8em; }
+    small, h3 { color: var(--lit); font-weight: normal; margin: 0; }
+    h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; }
+    code { color: var(--fg); }
+
+    input { width: 100%; box-sizing: border-box; background: var(--panel); color: var(--fg); border: 1px solid var(--dim); padding: 8px; font: inherit; }
+    input:focus { outline: 1px solid var(--hero); }
+    #cheat-out { max-height: 46vh; overflow: auto; }
+    #cheat-out h4 { margin: 12px 0 4px; color: var(--hero); font-weight: normal; }
+    #cheat-out table { border-collapse: collapse; }
+    #cheat-out th, #cheat-out td { text-align: left; padding: 2px 12px 2px 0; vertical-align: top; border-bottom: 1px solid #24221e; }
+    #cheat-out th { color: var(--lit); font-weight: normal; }
+    #cheat-out pre { white-space: pre-wrap; margin: 0; color: var(--lit); }
+    #cheat-out a { color: var(--you); }
+    .err { color: var(--ogre); }
+
+    #history { max-height: 22vh; overflow: auto; background: var(--panel); padding: 8px; white-space: pre-wrap; }
+    #history div { color: var(--dim); }
+    #history div.you { color: var(--you); }
+    #history span { display: inline-block; width: 5ch; opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <div id="loading">Booting Postgres in your browser…</div>
+      <div id="hud"></div>
+      <pre id="map"></pre>
+      <div id="log"></div>
+      <small>Move with arrows / WASD / HJKL. Walk into a monster to attack. U rewinds one turn.</small>
+    </section>
+
+    <section>
+      <h3>Console, as role <code>player</code></h3>
+      <small>Not sure what to query? Start with <code>\dn</code> and click your way down. <code>\?</code> lists commands.</small>
+      <input id="cheat" placeholder="\dn" autocomplete="off" spellcheck="false">
+      <div id="cheat-out"></div>
+      <h3>Every statement sent (newest first)</h3>
+      <div id="history"></div>
+    </section>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

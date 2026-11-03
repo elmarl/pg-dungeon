@@ -5,6 +5,7 @@
 - Always use braces for `if` statements. ESLint enforces this.
 - Use descriptive identifiers; do not use one-character variable or parameter names. ESLint enforces a minimum identifier length of two.
 - Give each function one clear responsibility, and name it to describe what it does.
+- Write comments in plain language. Avoid jargon and explain technical terms when they are needed.
 
 ## Architecture
 

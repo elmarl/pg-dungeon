@@ -20,7 +20,7 @@ const TABLES = `
   from pg_class c join pg_namespace n on n.oid = c.relnamespace
   where ${GAME_SCHEMAS} and c.relkind in ('r', 'v', 'm', 'S')
     and ($1::text is null or n.nspname = $1)
-    and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'a')   -- hide serial sequences
+    and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'a')   -- Hide ID counters created automatically for tables.
   order by n.nspname, c.relkind, c.relname`
 
 const COLUMNS = `

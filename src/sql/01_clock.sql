@@ -4,7 +4,7 @@ create schema clock;
 comment on schema clock is 'Time: the turn counter, the message log, and how often you rewound.';
 
 create table clock.turn (n int not null);
-create unique index turn_single_row on clock.turn ((true));   -- there is only one "now"
+create unique index turn_single_row on clock.turn ((true));   -- Keep one current turn.
 insert into clock.turn values (0);
 
 create table clock.log (
@@ -13,8 +13,8 @@ create table clock.log (
   msg  text not null
 );
 
--- Rewinding is ROLLBACK TO SAVEPOINT, and sequences ignore rollbacks.
--- So this is the one number in the game that remembers you cheated.
+-- Rewinding restores the game, but does not restore this counter.
+-- It is the one number that remembers you cheated.
 create sequence clock.rewinds;
 
 create function clock.tick() returns void

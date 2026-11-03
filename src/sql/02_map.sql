@@ -16,13 +16,13 @@ create table map.cell (
   y        int,
   walkable boolean not null,
   primary key (x, y),
-  unique (x, y, walkable)        -- lets creature.thing point a foreign key at (x, y, true)
+  unique (x, y, walkable)        -- Lets the game check that creatures stand on walkable cells.
 );
 
 -- Cells the hero has seen once. Walls stay drawn after you walk away.
 create table map.seen (x int, y int, primary key (x, y));
 
--- A drunkard's walk as a recursive CTE. Returns where the walk started.
+-- Make the cave by taking random steps from the center. Return the starting point.
 create function map.dig(seed float8) returns point
 language plpgsql
 as $$
@@ -50,7 +50,7 @@ begin
   update map.cell set walkable = true
   from walk where (cell.x, cell.y) = (walk.x, walk.y);
 
-  -- Solid rock nobody can see is deleted. The map edge is "no row".
+  -- Remove unseen rock with no walkable neighbor. Missing cells mark the map edge.
   delete from map.cell c
   where not c.walkable
     and not exists (select 1 from map.cell n

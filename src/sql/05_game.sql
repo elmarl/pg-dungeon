@@ -1,11 +1,11 @@
--- The game's only door: what the player role may call, and what it may read.
+-- The only actions the player may take and the game details they may read.
 
 create schema game;
 comment on schema game is 'The only door in: new game, move, rewind, and the player role''s permissions.';
 
 create role player;
 
--- Remember every cell the hero can see right now.
+-- Keep track of every cell the hero can see.
 create function game.remember_seen_cells() returns void
 language sql
 as $$
@@ -25,7 +25,7 @@ begin
   perform clock.say('You wake up in a cave. Something is breathing.');
 end $$;
 
--- Returns false when the move cost no turn (bumped a wall, or dead).
+-- Return false when a move does not use a turn, such as hitting a wall or moving while dead.
 create function game.move(dx int, dy int) returns boolean
 language plpgsql security definer set search_path = ''
 as $$
@@ -49,8 +49,8 @@ begin
   return true;
 end $$;
 
--- The browser calls this right after ROLLBACK TO SAVEPOINT, which already restored
--- the turn, the hero and the monsters. Only the sequence survived the rollback.
+-- After a rewind, the game restores the turn, hero, and monsters.
+-- This separate counter still increases, so the game remembers the rewind.
 create function game.rewound() returns void
 language plpgsql security definer set search_path = ''
 as $$
@@ -59,8 +59,8 @@ begin
   perform clock.say(format('Time folds. You are back at turn %s.', (select n from clock.turn)));
 end $$;
 
--- ── Fog of war is row-level security ───────────────────────────────────────
--- The player role cannot read rows the hero can't see.
+-- ── Keep the player from seeing places the hero has not seen ────────────────
+-- The player can read only cells the hero has seen and creatures within sight.
 
 alter table map.cell       enable row level security;
 alter table creature.thing enable row level security;
@@ -72,7 +72,7 @@ create policy fog on map.cell for select to player
 create policy fog on creature.thing for select to player
   using (creature.in_sight(x, y));
 
--- ── Permissions: the player can look and can move. That's it. ──────────────
+-- ── The player may move and rewind, and read what is needed to play ─────────
 
 revoke execute on all functions in schema clock, map, creature, game from public;
 

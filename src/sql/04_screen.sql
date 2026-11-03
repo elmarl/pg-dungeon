@@ -1,11 +1,11 @@
--- What the player sees. The browser prints these views and decides nothing.
--- security_invoker makes each view run as whoever reads it, so fog of war still applies.
--- (A plain view runs as its owner and would skip row-level security.)
+-- These are the game details shown on screen. The browser displays them but does not choose them.
+-- Run each query with the reader's permissions so hidden areas stay hidden.
+-- Otherwise, it would run with the view owner's permissions and could reveal hidden areas.
 
 create schema screen;
 comment on schema screen is 'What the player sees: tiles, status line, messages. Views run as the viewer.';
 
--- One row per visible tile. A creature hides the floor under it.
+-- One row per visible tile. A creature covers the floor beneath it.
 create view screen.tiles with (security_invoker = true) as
 select distinct on (x, y) x, y, glyph, style
 from (

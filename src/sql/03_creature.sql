@@ -25,16 +25,15 @@ create table creature.thing (
   pos      point generated always as (point(x, y)) stored,
   on_floor boolean not null default true check (on_floor),
 
-  -- Walls: you can only stand on a cell that exists and is walkable.
-  -- Walking into rock is a foreign key violation.
+  -- A creature can stand only on a cell that exists and can be walked on.
   foreign key (x, y, on_floor) references map.cell (x, y, walkable),
 
-  -- Bodies: two things can't share a point.
-  -- Walking into a monster is an exclusion violation, and that is how you attack.
+  -- Two creatures cannot occupy the same spot.
+  -- Trying to move onto an occupied spot is how the game handles an attack.
   exclude using gist (pos with ~=)
 );
 
--- security definer so fog of war (row-level security) never hides the hero from the game itself.
+-- The game can always find the hero, even when the player cannot see it.
 create function creature.hero() returns creature.thing
 language sql stable security definer set search_path = ''
 as $$ select * from creature.thing where kind = 'hero' $$;
@@ -67,9 +66,8 @@ as $$
   join creature.species s using (kind)
 $$;
 
--- Monster AI: one distance field, shared by every monster.
--- Breadth-first search outward from the hero. UNION (not UNION ALL) drops
--- duplicate (x, y, d) rows, which keeps the recursion bounded.
+-- Find how many steps each reachable cell is from the hero. All monsters use
+-- these distances to find their way. Skip repeated cell-and-distance pairs.
 create materialized view creature.scent as
 with recursive flood (x, y, d) as (
   select (creature.hero()).x, (creature.hero()).y, 0
@@ -129,12 +127,12 @@ begin
     order by n.d, random()
     limit 1;
 
-    continue when not found;            -- can't smell the hero yet
+    continue when not found;            -- The monster is not close enough to find a path yet.
 
     begin
       update creature.thing set x = step.x, y = step.y where id = m.id;
     exception when exclusion_violation then
-      null;                             -- another monster is in the way; wait a turn
+      null;                             -- Another monster is in the way, so wait a turn.
     end;
   end loop;
 end $$;

@@ -2,17 +2,41 @@
 import { PGlite } from '@electric-sql/pglite'
 import { readFileSync, readdirSync } from 'node:fs'
 import assert from 'node:assert/strict'
-import type { GameDatabase } from './src/db.js'
+import type { DbRow, GameDatabase } from './src/db.js'
 import { runPsqlCommand } from './src/console/psql.js'
+import { startSession } from './src/session.js'
 
 const db = new PGlite()
 for (const fileName of readdirSync('src/sql').sort()) {
   await db.exec(readFileSync(`src/sql/${fileName}`, 'utf8'))
 }
 await db.query('select game.new_game(0.42)')
-await db.exec('begin; set role player')
+let failRewindFunction = false
+const sessionDb: GameDatabase = {
+  exec: async (sql: string) => db.exec(sql),
+  query: async <TRow extends DbRow = DbRow>(sql: string) => {
+    if (failRewindFunction && sql.includes('game.rewound()')) {
+      return (await db.query('select 1 / 0')).rows as TRow[]
+    }
+    return (await db.query(sql)).rows as TRow[]
+  },
+  rows: async <TRow extends DbRow = DbRow>(sql: string, params?: unknown[]) => (await db.query(sql, params)).rows as TRow[],
+}
+const session = await startSession(sessionDb)
 
 const one = async <T extends Record<string, unknown>>(sql: string): Promise<T> => (await db.query(sql)).rows[0] as T
+
+await assert.rejects(session.attempt(() => sessionDb.rows('select 1 / 0')), /division by zero/)
+assert.equal((await sessionDb.rows<{ value: number }>('select 1 as value'))[0].value, 1, 'console query errors do not abort the game transaction')
+
+await assert.rejects(session.move(Number.NaN, 0))
+assert.equal(Number((await sessionDb.rows<{ turn: number }>('select turn from screen.status'))[0].turn), 0, 'move errors roll back to the turn savepoint')
+
+await session.move(0, 0)
+failRewindFunction = true
+await assert.rejects(session.rewind(), /division by zero/)
+failRewindFunction = false
+assert.equal(Number((await sessionDb.rows<{ turn: number }>('select turn from screen.status'))[0].turn), 0, 'rewind errors leave the transaction usable')
 
 for (const cheat of [
   'update creature.thing set hp = 999',

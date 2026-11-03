@@ -18,6 +18,8 @@
 
 - For every code change, add or update a focused test first and confirm it fails for the expected reason before implementing the change.
 - Run the relevant tests after implementation.
+- Keep tests under `test/`, grouped into separate files by domain (for example, gameplay, session recovery, permissions, and SQL console commands). Put reusable setup in `test/support/`.
+- Each test should assert one clearly named behavior so a failure identifies what broke. Avoid a single long script that mixes unrelated checks.
 
 ## Checks
 

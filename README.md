@@ -9,6 +9,8 @@ npm test
 npm run lint
 ```
 
+Tests live in `test/`, split by domain (`gameplay`, `session`, `permissions`, and `psql`). Each test names one behavior; shared database setup is in `test/support/`.
+
 ## Layout
 
 The game is split into parts, and each part is its own Postgres schema with its own file. Each schema uses only the ones above it in this list.

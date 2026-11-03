@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "tsx test.ts",
-    "lint": "eslint src test.ts",
+    "test": "tsx --test test/*.test.ts",
+    "lint": "eslint src test",
     "dev": "vite",
     "build": "vite build"
   },

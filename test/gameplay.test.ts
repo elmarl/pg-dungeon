@@ -1,29 +1,37 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
-import { withGameFixture } from './support/game-fixture.js'
+import assert from "node:assert/strict";
+import test from "node:test";
+import { withGameFixture } from "./support/game-fixture.js";
 
-test('rewinding restores the previous turn and increments the rewind counter', async () => {
+test("rewinding restores the previous turn and increments the rewind counter", async () => {
   await withGameFixture(async ({ db, session }) => {
-    await session.executeCommand(() => db.rows('select game.move(0, 0)'))
-    const [{ turn: turnBeforeRewind }] = await db.rows<{ turn: number }>('select turn from screen.status')
-    assert.equal(turnBeforeRewind, 1)
+    await session.executeCommand(() => db.rows("select game.move(0, 0)"));
+    const [{ turn: turnBeforeRewind }] = await db.rows<{ turn: number }>(
+      "select turn from screen.status",
+    );
+    assert.equal(turnBeforeRewind, 1);
 
-    await session.rewind()
-    const [{ turn, rewinds }] = await db.rows<{ turn: number; rewinds: number }>('select turn, rewinds from screen.status')
-    assert.equal(turn, 0)
-    assert.equal(rewinds, 1)
-  })
-})
+    await session.rewind();
+    const [{ turn, rewinds }] = await db.rows<{
+      turn: number;
+      rewinds: number;
+    }>("select turn, rewinds from screen.status");
+    assert.equal(turn, 0);
+    assert.equal(rewinds, 1);
+  });
+});
 
-test('a monster attacks after the hero moves next to it', async () => {
-  await withGameFixture(async ({ db, session }) => {
-    const [{ hp: initialHp }] = await db.rows<{ hp: number }>('select hp from screen.status')
-    const [{ heroX, heroY, monsterX, monsterY }] = await db.rows<{
-      heroX: number
-      heroY: number
-      monsterX: number
-      monsterY: number
-    }>(`
+test("a monster attacks after the hero moves next to it", async () => {
+  await withGameFixture(
+    async ({ db, session }) => {
+      const [{ hp: initialHp }] = await db.rows<{ hp: number }>(
+        "select hp from screen.status",
+      );
+      const [{ heroX, heroY, monsterX, monsterY }] = await db.rows<{
+        heroX: number;
+        heroY: number;
+        monsterX: number;
+        monsterY: number;
+      }>(`
       select hero.x as "heroX", hero.y as "heroY", monster.x as "monsterX", monster.y as "monsterY"
       from creature.creatures hero
       join creature.creatures monster
@@ -31,17 +39,26 @@ test('a monster attacks after the hero moves next to it', async () => {
       where abs(monster.x - hero.x) + abs(monster.y - hero.y) = 2
         and (monster.x = hero.x or monster.y = hero.y)
       limit 1
-    `)
-    const dx = Math.sign(monsterX - heroX)
-    const dy = Math.sign(monsterY - heroY)
-    await session.executeCommand(() => db.rows(`select game.move(${dx}, ${dy})`))
-    const [{ hp: currentHp, turn }] = await db.rows<{ hp: number; turn: number }>('select hp, turn from screen.status')
+    `);
+      const dx = Math.sign(monsterX - heroX);
+      const dy = Math.sign(monsterY - heroY);
+      await session.executeCommand(() =>
+        db.rows(`select game.move(${dx}, ${dy})`),
+      );
+      const [{ hp: currentHp, turn }] = await db.rows<{
+        hp: number;
+        turn: number;
+      }>("select hp, turn from screen.status");
 
-    assert.equal(turn, 1, 'a successful action should spend one turn')
-    assert.ok(currentHp < initialHp, 'the adjacent monster should attack the hero')
-  }, {
-    setup: async (db) => {
-      await db.exec(`
+      assert.equal(turn, 1, "a successful action should spend one turn");
+      assert.ok(
+        currentHp < initialHp,
+        "the adjacent monster should attack the hero",
+      );
+    },
+    {
+      setup: async (db) => {
+        await db.exec(`
         with candidate as (
           select monster.id, cell.x, cell.y
           from creature.creatures hero
@@ -64,7 +81,8 @@ test('a monster attacks after the hero moves next to it', async () => {
         set (x, y) = (candidate.x, candidate.y)
         from candidate
         where monster.id = candidate.id
-      `)
+      `);
+      },
     },
-  })
-})
+  );
+});

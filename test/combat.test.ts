@@ -1,18 +1,22 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
-import { withGameFixture } from './support/game-fixture.js'
+import assert from "node:assert/strict";
+import test from "node:test";
+import { withGameFixture } from "./support/game-fixture.js";
 
-test('a sword attack damages one adjacent target selected by subquery', async () => {
-  await withGameFixture(async ({ db, session }) => {
-    const [{ id: ratId }] = await db.rows<{ id: number }>(`
+test("a sword attack damages one adjacent target selected by subquery", async () => {
+  await withGameFixture(
+    async ({ db, session }) => {
+      const [{ id: ratId }] = await db.rows<{ id: number }>(`
       select target.id from creature.creatures target
       join creature.species species using (kind)
       where target.kind = 'rat' and creature.in_sight(target.x, target.y)
       limit 1
-    `)
-    const [{ hp: initialHp }] = await db.rows<{ hp: number }>(`select hp from creature.creatures where id = ${ratId}`)
+    `);
+      const [{ hp: initialHp }] = await db.rows<{ hp: number }>(
+        `select hp from creature.creatures where id = ${ratId}`,
+      );
 
-    await session.executeCommand(() => db.rows(`
+      await session.executeCommand(() =>
+        db.rows(`
       select game.attack(
         (select item.id from item.items item
          where item.holder_id = (select id from creature.creatures where kind = 'hero')
@@ -20,13 +24,17 @@ test('a sword attack damages one adjacent target selected by subquery', async ()
         (select target.id from creature.creatures target
          where target.id = ${ratId} and creature.in_sight(target.x, target.y))
       )
-    `))
+    `),
+      );
 
-    const remainingRat = await db.rows<{ hp: number }>(`select hp from creature.creatures where id = ${ratId}`)
-    assert.ok(remainingRat.length === 0 || remainingRat[0].hp < initialHp)
-  }, {
-    setup: async (db) => {
-      await db.exec(`
+      const remainingRat = await db.rows<{ hp: number }>(
+        `select hp from creature.creatures where id = ${ratId}`,
+      );
+      assert.ok(remainingRat.length === 0 || remainingRat[0].hp < initialHp);
+    },
+    {
+      setup: async (db) => {
+        await db.exec(`
         update creature.creatures target
         set (x, y) = (
           select cell.x, cell.y
@@ -42,14 +50,18 @@ test('a sword attack damages one adjacent target selected by subquery', async ()
           limit 1
         )
         where target.id = (select id from creature.creatures where kind = 'rat' order by id limit 1)
-      `)
+      `);
+      },
     },
-  })
-})
+  );
+});
 
-test('a bow cannot attack a target outside its range', async () => {
-  await withGameFixture(async ({ db, session }) => {
-    await assert.rejects(session.executeCommand(() => db.rows(`
+test("a bow cannot attack a target outside its range", async () => {
+  await withGameFixture(
+    async ({ db, session }) => {
+      await assert.rejects(
+        session.executeCommand(() =>
+          db.rows(`
       select game.attack(
         (select item.id from item.items item
          where item.holder_id = (select id from creature.creatures where kind = 'hero')
@@ -57,35 +69,44 @@ test('a bow cannot attack a target outside its range', async () => {
         (select target.id from creature.creatures target
          where target.kind = 'rat' and creature.in_sight(target.x, target.y) limit 1)
       )
-    `)), /out of range/)
-    const [{ turn }] = await db.rows<{ turn: number }>('select turn from screen.status')
-    assert.equal(turn, 0)
-  }, {
-    setup: async (db) => {
-      await db.exec(`
+    `),
+        ),
+        /out of range/,
+      );
+      const [{ turn }] = await db.rows<{ turn: number }>(
+        "select turn from screen.status",
+      );
+      assert.equal(turn, 0);
+    },
+    {
+      setup: async (db) => {
+        await db.exec(`
         update map.cell set walkable = true
-      `)
-      await db.exec(`
+      `);
+        await db.exec(`
         update creature.creatures target
         set (x, y) = (hero.x + 5, hero.y)
         from creature.creatures hero
         where hero.kind = 'hero'
           and target.id = (select id from creature.creatures where kind = 'rat' order by id limit 1)
-      `)
+      `);
+      },
     },
-  })
-})
+  );
+});
 
-test('a firebomb damages multiple enemies around its selected target', async () => {
-  await withGameFixture(async ({ db, session }) => {
-    const [{ id: targetId }] = await db.rows<{ id: number }>(`
+test("a firebomb damages multiple enemies around its selected target", async () => {
+  await withGameFixture(
+    async ({ db, session }) => {
+      const [{ id: targetId }] = await db.rows<{ id: number }>(`
       select target.id from creature.creatures target
       join creature.species species using (kind)
       where target.kind = 'rat' and creature.in_sight(target.x, target.y)
       order by target.id limit 1
-    `)
+    `);
 
-    await session.executeCommand(() => db.rows(`
+      await session.executeCommand(() =>
+        db.rows(`
       select game.attack(
         (select item.id from item.items item
          where item.holder_id = (select id from creature.creatures where kind = 'hero')
@@ -93,24 +114,26 @@ test('a firebomb damages multiple enemies around its selected target', async () 
         (select target.id from creature.creatures target
          where target.id = ${targetId} and creature.in_sight(target.x, target.y))
       )
-    `))
+    `),
+      );
 
-    const [{ damagedCount }] = await db.rows<{ damagedCount: number }>(`
+      const [{ damagedCount }] = await db.rows<{ damagedCount: number }>(`
       select count(*)::int as "damagedCount"
       from creature.creatures
       where kind = 'rat' and hp < 4
-    `)
-    assert.ok(damagedCount >= 2)
-  }, {
-    setup: async (db) => {
-      await db.exec(`
+    `);
+      assert.ok(damagedCount >= 2);
+    },
+    {
+      setup: async (db) => {
+        await db.exec(`
         insert into map.cell (x, y, walkable)
         select x, y, true
         from generate_series(1, 48) as x
         cross join generate_series(1, 22) as y
         on conflict (x, y) do update set walkable = excluded.walkable
-      `)
-      await db.exec(`
+      `);
+        await db.exec(`
         with moved_monsters as (
           select id, row_number() over (order by id) as row_number
           from creature.creatures
@@ -120,8 +143,8 @@ test('a firebomb damages multiple enemies around its selected target', async () 
         set (x, y) = (40, moved_monsters.row_number)
         from moved_monsters
         where monster.id = moved_monsters.id
-      `)
-      await db.exec(`
+      `);
+        await db.exec(`
         with chosen_rats as (
           select id, row_number() over (order by id) as row_number
           from creature.creatures
@@ -133,11 +156,12 @@ test('a firebomb damages multiple enemies around its selected target', async () 
         set (x, y) = (hero.x + 3, hero.y + chosen_rats.row_number - 1)
         from creature.creatures hero, chosen_rats
         where hero.kind = 'hero' and rat.id = chosen_rats.id
-      `)
-      await db.exec(`
+      `);
+        await db.exec(`
         insert into item.items (kind, holder_id)
         select 'firebomb', id from creature.creatures where kind = 'hero'
-      `)
+      `);
+      },
     },
-  })
-})
+  );
+});

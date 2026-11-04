@@ -1,12 +1,12 @@
-import type { GameDatabase } from '../db.js'
+import type { GameDatabase } from "../db.js";
 
-const GAME_SCHEMAS = `n.nspname in ('clock', 'map', 'creature', 'item', 'screen', 'game')`
+const GAME_SCHEMAS = `n.nspname in ('clock', 'map', 'creature', 'item', 'screen', 'game')`;
 
 const SCHEMAS = `
   select n.nspname as schema, obj_description(n.oid, 'pg_namespace') as holds
   from pg_namespace n
   where ${GAME_SCHEMAS}
-  order by array_position(array['game', 'screen', 'item', 'creature', 'map', 'clock'], n.nspname::text)`
+  order by array_position(array['game', 'screen', 'item', 'creature', 'map', 'clock'], n.nspname::text)`;
 
 const TABLES = `
   select n.nspname || '.' || c.relname as name,
@@ -22,7 +22,7 @@ const TABLES = `
   where ${GAME_SCHEMAS} and c.relkind in ('r', 'v', 'm', 'S')
     and ($1::text is null or n.nspname = $1)
     and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'a')   -- Hide ID counters created automatically for tables.
-  order by n.nspname, c.relkind, c.relname`
+  order by n.nspname, c.relkind, c.relname`;
 
 const COLUMNS = `
   select a.attname as column,
@@ -33,20 +33,20 @@ const COLUMNS = `
   from pg_attribute a
   left join pg_attrdef d on (d.adrelid, d.adnum) = (a.attrelid, a.attnum)
   where a.attrelid = $1::regclass and a.attnum > 0 and not a.attisdropped
-  order by a.attnum`
+  order by a.attnum`;
 
 const CONSTRAINTS = `
   select conname as constraint, pg_get_constraintdef(oid) as definition
   from pg_constraint
   where conrelid = $1::regclass and contype <> 'n'
-  order by contype, conname`
+  order by contype, conname`;
 
 const POLICIES = `
   select pol.polname as policy, pg_get_expr(pol.polqual, pol.polrelid) as "visible when"
   from pg_policy pol
-  where pol.polrelid = $1::regclass`
+  where pol.polrelid = $1::regclass`;
 
-const VIEW = `select pg_get_viewdef($1::regclass, true) as definition`
+const VIEW = `select pg_get_viewdef($1::regclass, true) as definition`;
 
 const FUNCTIONS = `
   select n.nspname || '.' || p.proname as name,
@@ -57,53 +57,108 @@ const FUNCTIONS = `
          case when has_function_privilege(p.oid, 'execute') then 'yes' else 'no' end as you_can_call
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where ${GAME_SCHEMAS}
-  order by has_function_privilege(p.oid, 'execute') desc, n.nspname, p.proname`
+  order by has_function_privilege(p.oid, 'execute') desc, n.nspname, p.proname`;
 
-const SOURCE = `select pg_get_functiondef($1::regproc) as source`
+const SOURCE = `select pg_get_functiondef($1::regproc) as source`;
 
 const HELP = [
-  { command: '\\dn', shows: 'schemas: one per part of the game' },
-  { command: '\\dt [schema]', shows: 'tables and views, and what the player role may do to each' },
-  { command: '\\d <schema.table>', shows: 'columns, constraints and row-level security, or a view\'s query' },
-  { command: '\\df', shows: 'functions, arguments, descriptions, who they run as, and whether you may call them' },
-  { command: '\\sf <schema.function>', shows: 'a function\'s source' },
-  { command: '\\rewind', shows: 'undoes the most recent game turn' },
-  { command: 'anything else', shows: 'runs as SQL; successful actions persist and failed statements are rolled back' },
-]
+  { command: "\\dn", shows: "schemas: one per part of the game" },
+  {
+    command: "\\dt [schema]",
+    shows: "tables and views, and what the player role may do to each",
+  },
+  {
+    command: "\\d <schema.table>",
+    shows: "columns, constraints and row-level security, or a view's query",
+  },
+  {
+    command: "\\df",
+    shows:
+      "functions, arguments, descriptions, who they run as, and whether you may call them",
+  },
+  { command: "\\sf <schema.function>", shows: "a function's source" },
+  { command: "\\rewind", shows: "undoes the most recent game turn" },
+  {
+    command: "anything else",
+    shows:
+      "runs as SQL; successful actions persist and failed statements are rolled back",
+  },
+];
 
-type TableRow = Record<string, unknown>
-type PsqlResult = { title: string; rows: TableRow[]; link?: { column: string; command: string }; pre?: boolean }
+type TableRow = Record<string, unknown>;
+type PsqlResult = {
+  title: string;
+  rows: TableRow[];
+  link?: { column: string; command: string };
+  pre?: boolean;
+};
 
-export async function runPsqlCommand(db: Pick<GameDatabase, 'rows'>, input: string): Promise<PsqlResult[]> {
-  const [cmd, arg] = input.trim().split(/\s+/)
-  const queryRows = (sql: string, params?: unknown[]) => db.rows(sql, params)
+export async function runPsqlCommand(
+  db: Pick<GameDatabase, "rows">,
+  input: string,
+): Promise<PsqlResult[]> {
+  const [cmd, arg] = input.trim().split(/\s+/);
+  const queryRows = (sql: string, params?: unknown[]) => db.rows(sql, params);
 
   switch (cmd) {
-    case '\\?':
-      return [{ title: 'Commands', rows: HELP }]
-    case '\\dn':
-      return [{ title: 'Schemas', rows: await queryRows(SCHEMAS), link: { column: 'schema', command: '\\dt' } }]
-    case '\\dt':
-      return [{ title: arg ? `Tables in ${arg}` : 'Tables', rows: await queryRows(TABLES, [arg ?? null]), link: { column: 'name', command: '\\d' } }]
-    case '\\df':
-      return [{ title: 'Functions', rows: await queryRows(FUNCTIONS), link: { column: 'name', command: '\\sf' } }]
-    case '\\sf':
-      return [{ title: `Function ${arg}`, rows: await queryRows(SOURCE, [arg]), pre: true }]
-    case '\\d': {
+    case "\\?":
+      return [{ title: "Commands", rows: HELP }];
+    case "\\dn":
+      return [
+        {
+          title: "Schemas",
+          rows: await queryRows(SCHEMAS),
+          link: { column: "schema", command: "\\dt" },
+        },
+      ];
+    case "\\dt":
+      return [
+        {
+          title: arg ? `Tables in ${arg}` : "Tables",
+          rows: await queryRows(TABLES, [arg ?? null]),
+          link: { column: "name", command: "\\d" },
+        },
+      ];
+    case "\\df":
+      return [
+        {
+          title: "Functions",
+          rows: await queryRows(FUNCTIONS),
+          link: { column: "name", command: "\\sf" },
+        },
+      ];
+    case "\\sf":
+      return [
+        {
+          title: `Function ${arg}`,
+          rows: await queryRows(SOURCE, [arg]),
+          pre: true,
+        },
+      ];
+    case "\\d": {
       if (!arg) {
-        return runPsqlCommand(db, '\\dt')
+        return runPsqlCommand(db, "\\dt");
       }
-      const [{ kind }] = (await queryRows('select relkind as kind from pg_class where oid = $1::regclass', [arg])) as Array<{ kind: string }>
-      if (kind === 'v' || kind === 'm') {
-        return [{ title: `View ${arg}`, rows: await queryRows(VIEW, [arg]), pre: true }]
+      const [{ kind }] = (await queryRows(
+        "select relkind as kind from pg_class where oid = $1::regclass",
+        [arg],
+      )) as Array<{ kind: string }>;
+      if (kind === "v" || kind === "m") {
+        return [
+          {
+            title: `View ${arg}`,
+            rows: await queryRows(VIEW, [arg]),
+            pre: true,
+          },
+        ];
       }
       return [
         { title: `Table ${arg}`, rows: await queryRows(COLUMNS, [arg]) },
-        { title: 'Constraints', rows: await queryRows(CONSTRAINTS, [arg]) },
-        { title: 'Row-level security', rows: await queryRows(POLICIES, [arg]) },
-      ].filter((result) => result.rows.length)
+        { title: "Constraints", rows: await queryRows(CONSTRAINTS, [arg]) },
+        { title: "Row-level security", rows: await queryRows(POLICIES, [arg]) },
+      ].filter((result) => result.rows.length);
     }
     default:
-      throw new Error(`unknown command ${cmd}. Try \\?`)
+      throw new Error(`unknown command ${cmd}. Try \\?`);
   }
 }

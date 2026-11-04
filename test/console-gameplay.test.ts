@@ -1,10 +1,12 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
-import { withGameFixture } from './support/game-fixture.js'
+import assert from "node:assert/strict";
+import test from "node:test";
+import { withGameFixture } from "./support/game-fixture.js";
 
-test('a successful SQL movement command changes the game state', async () => {
+test("a successful SQL movement command changes the game state", async () => {
   await withGameFixture(async ({ db, session }) => {
-    const [{ x: heroX, y: heroY }] = await db.rows<{ x: number; y: number }>("select x, y from creature.creatures where kind = 'hero'")
+    const [{ x: heroX, y: heroY }] = await db.rows<{ x: number; y: number }>(
+      "select x, y from creature.creatures where kind = 'hero'",
+    );
     const [{ x: nextX, y: nextY }] = await db.rows<{ x: number; y: number }>(`
       select cell.x, cell.y
       from map.cell cell
@@ -15,21 +17,27 @@ test('a successful SQL movement command changes the game state', async () => {
           where (creature.creatures.x, creature.creatures.y) = (cell.x, cell.y)
         )
       limit 1
-    `)
-    const stepX = nextX - heroX
-    const stepY = nextY - heroY
+    `);
+    const stepX = nextX - heroX;
+    const stepY = nextY - heroY;
 
-    await session.executeCommand(() => db.rows(`select game.move(${stepX}, ${stepY})`))
+    await session.executeCommand(() =>
+      db.rows(`select game.move(${stepX}, ${stepY})`),
+    );
 
-    const [{ turn }] = await db.rows<{ turn: number }>('select turn from screen.status')
-    assert.equal(turn, 1)
-  })
-})
+    const [{ turn }] = await db.rows<{ turn: number }>(
+      "select turn from screen.status",
+    );
+    assert.equal(turn, 1);
+  });
+});
 
-test('a successful read-only SQL command does not create an undo turn', async () => {
+test("a successful read-only SQL command does not create an undo turn", async () => {
   await withGameFixture(async ({ db, session }) => {
-    await session.executeCommand(() => db.rows('select * from screen.status'))
-    const [{ turn }] = await db.rows<{ turn: number }>('select turn from screen.status')
-    assert.equal(turn, 0)
-  })
-})
+    await session.executeCommand(() => db.rows("select * from screen.status"));
+    const [{ turn }] = await db.rows<{ turn: number }>(
+      "select turn from screen.status",
+    );
+    assert.equal(turn, 0);
+  });
+});

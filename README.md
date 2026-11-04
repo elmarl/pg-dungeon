@@ -83,37 +83,37 @@ select game.attack(
 
 The game is split into domain schemas. Each part uses only schemas defined before it in this list.
 
-| Schema | File | Holds |
-|---|---|---|
-| `clock` | [`01_clock.sql`](src/sql/01_clock.sql) | Turn counter, message log, rewind counter |
-| `map` | [`02_map.sql`](src/sql/02_map.sql) | Map settings, cells, walls, cells seen, cave digging |
-| `creature` | [`03_creature.sql`](src/sql/03_creature.sql) | Species, bodies, sight, monster AI, combat |
-| `item` | [`03_item.sql`](src/sql/03_item.sql) | Item types and item entities, carried or on the floor |
-| `screen` | [`04_screen.sql`](src/sql/04_screen.sql) | Views the browser prints: tiles, status, messages |
-| `game` | [`05_game.sql`](src/sql/05_game.sql) | Game actions, new game, rewind, and player permissions |
+| Schema     | File                                         | Holds                                                  |
+| ---------- | -------------------------------------------- | ------------------------------------------------------ |
+| `clock`    | [`01_clock.sql`](src/sql/01_clock.sql)       | Turn counter, message log, rewind counter              |
+| `map`      | [`02_map.sql`](src/sql/02_map.sql)           | Map settings, cells, walls, cells seen, cave digging   |
+| `creature` | [`03_creature.sql`](src/sql/03_creature.sql) | Species, bodies, sight, monster AI, combat             |
+| `item`     | [`03_item.sql`](src/sql/03_item.sql)         | Item types and item entities, carried or on the floor  |
+| `screen`   | [`04_screen.sql`](src/sql/04_screen.sql)     | Views the browser prints: tiles, status, messages      |
+| `game`     | [`05_game.sql`](src/sql/05_game.sql)         | Game actions, new game, rewind, and player permissions |
 
 The TypeScript side:
 
-| File | Does |
-|---|---|
-| [`db.ts`](src/db.ts) | Boots PGlite, loads the SQL files in order, records statements for the history panel |
-| [`session.ts`](src/session.ts) | Starts the game transaction, recovers failed actions, and rewinds turns |
-| [`render.ts`](src/render.ts) | Prints the `screen` views |
-| [`console/`](src/console) | Runs player SQL, psql commands, and statement history |
+| File                           | Does                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| [`db.ts`](src/db.ts)           | Boots PGlite, loads the SQL files in order, records statements for the history panel |
+| [`session.ts`](src/session.ts) | Starts the game transaction, recovers failed actions, and rewinds turns              |
+| [`render.ts`](src/render.ts)   | Prints the `screen` views                                                            |
+| [`console/`](src/console)      | Runs player SQL, psql commands, and statement history                                |
 
 The game uses one database transaction for its full session and relies on PostgreSQL savepoints for rewinding.
 
 ## How PostgreSQL features support game mechanics
 
-| Mechanic | Postgres feature |
-|---|---|
-| Walls | A composite foreign key from `creature.creatures (x, y, on_floor)` to `map.cell (x, y, walkable)`. Walking into rock is a `foreign_key_violation`. |
-| Attacking | An exclusion constraint prevents two creatures from sharing a point. An attack updates the selected enemy in SQL. |
-| Fog of war | Row level security prevents the `player` role from reading cells or monsters outside the hero's sight. |
-| What's on screen | Views created `with (security_invoker = true)`. A plain view runs as its owner and could skip the fog. |
-| Map memory | `map.seen`, which the fog policy also lets through. Monsters are not remembered. |
-| Cave generation | A drunkard's walk written as a recursive CTE, seeded with `setseed`. |
-| Monster AI | A breadth first search from the hero, written as a recursive CTE with `UNION` to keep it bounded and stored in a materialized view. Every monster steps downhill on it. |
-| Turn counter | A table with one row. Rolling back to a turn savepoint restores it with the rest of the game state. |
-| Rewind counter | A sequence. Sequences ignore rollbacks, so it remembers how often you rewound. |
-| Player actions | `game` functions are the controlled entry points. The `player` role has no direct `INSERT`, `UPDATE`, or `DELETE` permission. |
+| Mechanic         | Postgres feature                                                                                                                                                        |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Walls            | A composite foreign key from `creature.creatures (x, y, on_floor)` to `map.cell (x, y, walkable)`. Walking into rock is a `foreign_key_violation`.                      |
+| Attacking        | An exclusion constraint prevents two creatures from sharing a point. An attack updates the selected enemy in SQL.                                                       |
+| Fog of war       | Row level security prevents the `player` role from reading cells or monsters outside the hero's sight.                                                                  |
+| What's on screen | Views created `with (security_invoker = true)`. A plain view runs as its owner and could skip the fog.                                                                  |
+| Map memory       | `map.seen`, which the fog policy also lets through. Monsters are not remembered.                                                                                        |
+| Cave generation  | A drunkard's walk written as a recursive CTE, seeded with `setseed`.                                                                                                    |
+| Monster AI       | A breadth first search from the hero, written as a recursive CTE with `UNION` to keep it bounded and stored in a materialized view. Every monster steps downhill on it. |
+| Turn counter     | A table with one row. Rolling back to a turn savepoint restores it with the rest of the game state.                                                                     |
+| Rewind counter   | A sequence. Sequences ignore rollbacks, so it remembers how often you rewound.                                                                                          |
+| Player actions   | `game` functions are the controlled entry points. The `player` role has no direct `INSERT`, `UPDATE`, or `DELETE` permission.                                           |

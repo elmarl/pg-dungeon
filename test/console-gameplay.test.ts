@@ -4,15 +4,15 @@ import { withGameFixture } from './support/game-fixture.js'
 
 test('a successful SQL movement command changes the game state', async () => {
   await withGameFixture(async ({ db, session }) => {
-    const [{ x: heroX, y: heroY }] = await db.rows<{ x: number; y: number }>("select x, y from creature.thing where kind = 'hero'")
+    const [{ x: heroX, y: heroY }] = await db.rows<{ x: number; y: number }>("select x, y from creature.creatures where kind = 'hero'")
     const [{ x: nextX, y: nextY }] = await db.rows<{ x: number; y: number }>(`
       select cell.x, cell.y
       from map.cell cell
       where cell.walkable
         and abs(cell.x - ${heroX}) + abs(cell.y - ${heroY}) = 1
         and not exists (
-          select 1 from creature.thing
-          where (creature.thing.x, creature.thing.y) = (cell.x, cell.y)
+          select 1 from creature.creatures
+          where (creature.creatures.x, creature.creatures.y) = (cell.x, cell.y)
         )
       limit 1
     `)

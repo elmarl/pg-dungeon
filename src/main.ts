@@ -30,7 +30,7 @@ const queueAction = <T>(fn: (...args: any[]) => Promise<T> | T) => {
 }
 
 mountConsole({
-  input: getElementById('cheat') as HTMLInputElement,
+  input: getElementById('cheat') as HTMLTextAreaElement,
   output: getElementById('cheat-out') as HTMLElement,
   db,
   session,

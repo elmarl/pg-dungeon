@@ -13,56 +13,69 @@ Tests live in `test/`, split by domain. Each test names one behavior; shared dat
 
 ## Play through SQL
 
-Use the console to inspect the game and choose actions. The game has no keyboard movement controls:
+Use the console to inspect the game and choose actions. Press Enter to run a query or Alt+Enter to add a newline for a multiline query. The game has no keyboard movement controls:
 
 ```sql
 select target.id, target.kind, species.glyph, target.hp, target.x, target.y,
        point(target.x, target.y) <-> (select (creature.hero()).pos) as distance_to_player
-from creature.thing target
+from creature.creatures target
 join creature.species species using (kind)
 where target.kind <> 'hero'
   and creature.in_sight(target.x, target.y);
 select id, kind, name
-from item.thing join item.kind using (kind)
-where holder_id = (select id from creature.thing where kind = 'hero');
+from item.items join item.kind using (kind)
+where holder_id = (select id from creature.creatures where kind = 'hero');
 
 select game.move(1, 0);
 select game.drink_potion((
-  select id from item.thing
+  select id from item.items
   where kind = 'healing_potion'
-    and holder_id = (select id from creature.thing where kind = 'hero')
+    and holder_id = (select id from creature.creatures where kind = 'hero')
   limit 1
 ));
 ```
 
-Items all live in `item.thing`. To find visible floor items, write a query that filters for unheld items and visible coordinates:
+Items all live in `item.items`. To find visible floor items, write a query that filters for unheld items and visible coordinates:
 
 ```sql
 select item.id, item.kind, kind.name, item.x, item.y
-from item.thing item join item.kind kind using (kind)
+from item.items item join item.kind kind using (kind)
 where item.holder_id is null
   and creature.in_sight(item.x, item.y)
 order by item.id;
 ```
 
-Use the returned ID in `select game.pick_up(ID);` when next to the item. If it is farther away, move toward its `(x, y)` coordinates with `game.move(dx, dy)` first. `holder_id IS NULL` selects floor items; `holder_id = (select id from creature.thing where kind = 'hero')` selects carried items. The map shows floor item glyphs. `\df` shows function descriptions and target guidance.
+To find only items within pickup range (including the item ID and name), use:
 
-Weapons are items in `item.thing`; filter by the hero's `holder_id` and the desired `kind`. Query targets by joining `creature.thing` and `creature.species`, then filter to visible non-hero creatures with `creature.in_sight(x, y)`. A sword must be used next to its target, a bow attacks one visible enemy at range, and a firebomb damages enemies around its selected target:
+```sql
+select item.id, item.kind, kind.name
+from item.items item
+join item.kind kind using (kind)
+cross join creature.hero() hero
+where item.holder_id is null
+  and abs(item.x - hero.x) + abs(item.y - hero.y) <= 1;
+```
+
+Use the returned ID in `select game.pick_up(ID);`. If an item is farther away, move toward its `(x, y)` coordinates with `game.move(dx, dy)` first. `holder_id IS NULL` selects floor items; `holder_id = (select id from creature.creatures where kind = 'hero')` selects carried items. The map shows floor item glyphs. `\df` shows function descriptions and target guidance.
+
+Weapons are items in `item.items`; filter by the hero's `holder_id` and the desired `kind`. Query targets by joining `creature.creatures` and `creature.species`, then filter to visible non-hero creatures with `creature.in_sight(x, y)`. A sword must be used next to its target, a bow attacks one visible enemy at range, and a firebomb damages enemies around its selected target:
 
 ```sql
 select game.attack(
-  (select id from item.thing
+  (select id from item.items
    where kind = 'shortbow'
-     and holder_id = (select id from creature.thing where kind = 'hero')
+     and holder_id = (select id from creature.creatures where kind = 'hero')
    limit 1),
-  (select target.id from creature.thing target
+  (select target.id from creature.creatures target
    where target.kind = 'rat'
      and creature.in_sight(target.x, target.y)
    limit 1)
 );
 ```
 
-Inventory is queryable through SQL, not shown in a separate visual panel. `item.thing` holds every item entity: `holder_id` identifies carried items, while `(x, y)` locates floor items. Write your own filters to select one group or the other; picking up an item updates its holder and keeps its ID. Defeated monsters can drop items. The player starts with a sword, a shortbow, and a healing potion.
+Inventory is queryable through SQL, not shown in a separate visual panel. `item.items` holds every item entity: `holder_id` identifies carried items, while `(x, y)` locates floor items. Write your own filters to select one group or the other; picking up an item updates its holder and keeps its ID. Defeated monsters can drop items. The player starts with a sword, a shortbow, and a healing potion.
+
+Row-level security limits floor items in `item.items` to those within the hero's sight; carried items remain visible to the hero. Starting floor loot is split between nearby items and items placed beyond the initial sight radius.
 
 Use `\?` in the console for psql-style inspection commands, `\dn` to list schemas, and `\df` to inspect available functions. Successful actions persist, while read-only queries do not spend a turn. A failed statement is rolled back to its savepoint so a typo or illegal action does not abort the game session. Use `\rewind` to undo the most recent game turn.
 
@@ -94,7 +107,7 @@ The game uses one long-lived database transaction because rewind relies on Postg
 
 | Mechanic | Postgres feature |
 |---|---|
-| Walls | A composite foreign key from `creature.thing (x, y, on_floor)` to `map.cell (x, y, walkable)`. Walking into rock is a `foreign_key_violation`. |
+| Walls | A composite foreign key from `creature.creatures (x, y, on_floor)` to `map.cell (x, y, walkable)`. Walking into rock is a `foreign_key_violation`. |
 | Attacking | An exclusion constraint prevents two creatures from sharing a point; an attack updates the selected enemy in SQL. |
 | Fog of war | Row-level security. The `player` role cannot read cells or monsters outside the hero's sight. |
 | What's on screen | Views created `with (security_invoker = true)`. A plain view runs as its owner and could skip the fog. |
@@ -107,7 +120,7 @@ The game uses one long-lived database transaction because rewind relies on Postg
 
 ## Explore it, try to cheat
 
-The console runs SQL as `player`. `select * from creature.thing` returns only creatures the hero can see. `update creature.thing set hp = 999` gets `permission denied`.
+The console runs SQL as `player`. `select * from creature.creatures` returns only creatures the hero can see. `update creature.creatures set hp = 999` gets `permission denied`.
 
 Use `\dn` and click down from schema to table or function. The psql-style commands are rewritten as catalog queries in [`psql.ts`](src/console/psql.ts): `\dn`, `\dt`, `\d`, `\df`, and `\sf`. They run as `player` too, so you can inspect the game functions and the fog policy without reading hidden map data.
 

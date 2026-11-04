@@ -25,9 +25,9 @@ test('a monster attacks after the hero moves next to it', async () => {
       monsterY: number
     }>(`
       select hero.x as "heroX", hero.y as "heroY", monster.x as "monsterX", monster.y as "monsterY"
-      from creature.thing hero
-      join creature.thing monster
-        on monster.id = (select id from creature.thing where kind <> 'hero' order by id limit 1)
+      from creature.creatures hero
+      join creature.creatures monster
+        on monster.id = (select id from creature.creatures where kind <> 'hero' order by id limit 1)
       where abs(monster.x - hero.x) + abs(monster.y - hero.y) = 2
         and (monster.x = hero.x or monster.y = hero.y)
       limit 1
@@ -44,23 +44,23 @@ test('a monster attacks after the hero moves next to it', async () => {
       await db.exec(`
         with candidate as (
           select monster.id, cell.x, cell.y
-          from creature.thing hero
-          join creature.thing monster
-            on monster.id = (select id from creature.thing where kind <> 'hero' order by id limit 1)
+          from creature.creatures hero
+          join creature.creatures monster
+            on monster.id = (select id from creature.creatures where kind <> 'hero' order by id limit 1)
           join map.cell cell
             on cell.walkable
            and abs(cell.x - hero.x) + abs(cell.y - hero.y) = 2
            and (cell.x = hero.x or cell.y = hero.y)
           where hero.kind = 'hero'
             and not exists (
-              select 1 from creature.thing occupant
+              select 1 from creature.creatures occupant
               where ((occupant.x, occupant.y) = (hero.x + sign(cell.x - hero.x), hero.y + sign(cell.y - hero.y))
                   or (occupant.x, occupant.y) = (cell.x, cell.y))
                 and occupant.id <> monster.id
             )
           limit 1
         )
-        update creature.thing monster
+        update creature.creatures monster
         set (x, y) = (candidate.x, candidate.y)
         from candidate
         where monster.id = candidate.id

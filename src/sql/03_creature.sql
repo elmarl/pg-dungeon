@@ -16,7 +16,7 @@ insert into creature.species values
   ('rat',  'r',  4, 1, 0),
   ('ogre', 'O', 12, 3, 0);
 
-create table creature.thing (
+create table creature.creatures (
   id       serial primary key,
   kind     text not null references creature.species,
   hp       int  not null,
@@ -34,16 +34,16 @@ create table creature.thing (
 );
 
 -- The game can always find the hero, even when the player cannot see it.
-create function creature.hero() returns creature.thing
+create function creature.hero() returns creature.creatures
 language sql stable security definer set search_path = ''
-as $$ select * from creature.thing where kind = 'hero' $$;
+as $$ select * from creature.creatures where kind = 'hero' $$;
 
 create function creature.in_sight(cx int, cy int) returns boolean
 language sql stable security definer set search_path = ''
 as $$
   -- <-> measures straight-line distance between PostgreSQL points.
   select point(cx, cy) <-> hero.pos <= species.sight
-  from creature.thing hero join creature.species species using (kind)
+  from creature.creatures hero join creature.species species using (kind)
   where hero.kind = 'hero'
 $$;
 comment on function creature.in_sight(int, int) is
@@ -52,14 +52,14 @@ comment on function creature.in_sight(int, int) is
 create function creature.spawn_hero(at point) returns void
 language sql
 as $$
-  insert into creature.thing (kind, hp, x, y)
+  insert into creature.creatures (kind, hp, x, y)
   select kind, hp, at[0]::int, at[1]::int from creature.species where kind = 'hero'
 $$;
 
 create function creature.spawn_monsters(how_many int, away_from point) returns void
 language sql
 as $$
-  insert into creature.thing (kind, hp, x, y)
+  insert into creature.creatures (kind, hp, x, y)
   select s.kind, s.hp, c.x, c.y
   from (select x, y, (array['rat', 'rat', 'ogre'])[1 + floor(random() * 3)::int] as kind
         from map.cell
@@ -83,14 +83,14 @@ with recursive flood (x, y, d) as (
 select x, y, min(d) as d from flood group by x, y
 with no data;
 
-create function creature.hit(attacker creature.thing, victim creature.thing, weapon_damage int default null) returns void
+create function creature.hit(attacker creature.creatures, victim creature.creatures, weapon_damage int default null) returns void
 language plpgsql
 as $$
 declare
   dmg     int := coalesce(weapon_damage, (select s.dmg from creature.species s where s.kind = attacker.kind));
   hp_left int;
 begin
-  update creature.thing set hp = hp - dmg where id = victim.id returning hp into hp_left;
+  update creature.creatures set hp = hp - dmg where id = victim.id returning hp into hp_left;
 
   if victim.kind = 'hero' then
     perform clock.say(format('The %s hits you for %s.', attacker.kind, dmg));
@@ -98,9 +98,9 @@ begin
   elsif hp_left > 0 then
     perform clock.say(format('You hit the %s.', victim.kind));
   else
-    delete from creature.thing where id = victim.id;
+    delete from creature.creatures where id = victim.id;
     perform clock.say(format('You kill the %s.', victim.kind));
-    if not exists (select 1 from creature.thing where kind <> 'hero') then
+    if not exists (select 1 from creature.creatures where kind <> 'hero') then
       perform clock.say('The cave is quiet. You win.');
     end if;
   end if;
@@ -110,12 +110,12 @@ create function creature.monsters_act() returns void
 language plpgsql
 as $$
 declare
-  m    creature.thing;
+  m    creature.creatures;
   step record;
 begin
   refresh materialized view creature.scent;
 
-  for m in select * from creature.thing where kind <> 'hero' order by id loop
+  for m in select * from creature.creatures where kind <> 'hero' order by id loop
     exit when (creature.hero()).hp <= 0;
 
     if abs(m.x - (creature.hero()).x) + abs(m.y - (creature.hero()).y) = 1 then
@@ -133,7 +133,7 @@ begin
     continue when not found;            -- The monster is not close enough to find a path yet.
 
     begin
-      update creature.thing set x = step.x, y = step.y where id = m.id;
+      update creature.creatures set x = step.x, y = step.y where id = m.id;
     exception when exclusion_violation then
       null;                             -- Another monster is in the way, so wait a turn.
     end;

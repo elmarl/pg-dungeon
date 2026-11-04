@@ -21,7 +21,7 @@ declare
 begin
   perform creature.spawn_hero(start);
   perform creature.spawn_monsters(10, start);
-  insert into item.thing (kind, holder_id)
+  insert into item.items (kind, holder_id)
   select starting.kind, hero.id
   from (values ('sword'), ('shortbow'), ('healing_potion')) starting(kind)
   cross join lateral (select (creature.hero()).id as id) hero;
@@ -44,17 +44,17 @@ create function game.move(dx int, dy int) returns boolean
 language plpgsql security definer set search_path = ''
 as $$
 declare
-  me creature.thing := creature.hero();
+  me creature.creatures := creature.hero();
 begin
   if me.hp <= 0 then return false; end if;
 
   begin
-    update creature.thing set x = x + dx, y = y + dy where id = me.id;
+    update creature.creatures set x = x + dx, y = y + dy where id = me.id;
   exception
     when foreign_key_violation then
       return false;
     when exclusion_violation then
-      perform creature.hit(me, (select t from creature.thing t where (t.x, t.y) = (me.x + dx, me.y + dy)));
+      perform creature.hit(me, (select t from creature.creatures t where (t.x, t.y) = (me.x + dx, me.y + dy)));
   end;
 
   perform game.finish_turn();
@@ -67,69 +67,69 @@ create function game.pick_up(item_id int) returns void
 language plpgsql security definer set search_path = ''
 as $$
 declare
-  me creature.thing := creature.hero();
-  found_item item.thing;
+  me creature.creatures := creature.hero();
+  found_item item.items;
 begin
   if me.hp <= 0 then raise exception 'You cannot pick up items while dead.'; end if;
 
   select item.* into found_item
-  from item.thing item
+  from item.items item
   where item.id = item_id and item.holder_id is null
     and abs(item.x - me.x) + abs(item.y - me.y) <= 1;
   if not found then raise exception 'That item is not within reach.'; end if;
 
-  update item.thing
+  update item.items
   set holder_id = me.id, x = null, y = null
   where id = item_id;
   perform clock.say(format('You pick up the %s.', (select name from item.kind where kind = found_item.kind)));
   perform game.finish_turn();
 end $$;
 comment on function game.pick_up(int) is
-  'Pick up a floor item next to the hero. Query item.thing with holder_id IS NULL and creature.in_sight(x, y) to find its ID.';
+  'Pick up a floor item next to the hero. Query item.items with holder_id IS NULL and creature.in_sight(x, y) to find its ID.';
 
 create function game.drink_potion(item_id int) returns void
 language plpgsql security definer set search_path = ''
 as $$
 declare
-  me creature.thing := creature.hero();
+  me creature.creatures := creature.hero();
   potion item.kind;
 begin
   if me.hp <= 0 then raise exception 'You cannot use items while dead.'; end if;
 
   select kind.* into potion
-  from item.thing item join item.kind kind using (kind)
+  from item.items item join item.kind kind using (kind)
   where item.id = item_id and item.holder_id = me.id and kind.category = 'potion';
   if not found then raise exception 'That is not a potion in your inventory.'; end if;
 
-  update creature.thing
+  update creature.creatures
   set hp = least((select species.hp from creature.species species where species.kind = 'hero'), hp + potion.healing)
   where id = me.id;
-  delete from item.thing where id = item_id;
+  delete from item.items where id = item_id;
   perform clock.say(format('You drink a %s.', potion.name));
   perform game.finish_turn();
 end $$;
 comment on function game.drink_potion(int) is
-  'Drink a carried potion. Query item.thing where holder_id = (SELECT id FROM creature.thing WHERE kind = ''hero'') and kind = ''healing_potion'' to find its ID.';
+  'Drink a carried potion. Query item.items where holder_id = (SELECT id FROM creature.creatures WHERE kind = ''hero'') and kind = ''healing_potion'' to find its ID.';
 
 create function game.attack(weapon_id int, target_id int) returns int
 language plpgsql security definer set search_path = ''
 as $$
 declare
-  me creature.thing := creature.hero();
+  me creature.creatures := creature.hero();
   weapon item.kind;
-  victim creature.thing;
-  affected creature.thing;
+  victim creature.creatures;
+  affected creature.creatures;
   hits int := 0;
   target_distance numeric;
 begin
   if me.hp <= 0 then raise exception 'You cannot attack while dead.'; end if;
 
   select kind.* into weapon
-  from item.thing item join item.kind kind using (kind)
+  from item.items item join item.kind kind using (kind)
   where item.id = weapon_id and item.holder_id = me.id and kind.category <> 'potion';
   if not found then raise exception 'That weapon is not in your inventory.'; end if;
 
-  select target.* into victim from creature.thing target where target.id = target_id and target.kind <> 'hero';
+  select target.* into victim from creature.creatures target where target.id = target_id and target.kind <> 'hero';
   if not found or not creature.in_sight(victim.x, victim.y) then
     raise exception 'That target is not visible.';
   end if;
@@ -143,7 +143,7 @@ begin
 
   if weapon.category = 'area' then
     for affected in
-      select target.* from creature.thing target
+      select target.* from creature.creatures target
       where target.kind <> 'hero'
         and creature.in_sight(target.x, target.y)
         and point(target.x, target.y) <-> point(victim.x, victim.y) <= weapon.blast_radius
@@ -158,14 +158,14 @@ begin
   end if;
 
   if weapon.consumable then
-    delete from item.thing where id = weapon_id;
+    delete from item.items where id = weapon_id;
   end if;
 
   perform game.finish_turn();
   return hits;
 end $$;
 comment on function game.attack(int, int) is
-  'Attack a visible target with a carried weapon. Query item.thing where holder_id = (SELECT id FROM creature.thing WHERE kind = ''hero'') to find weapon IDs; query creature.thing where kind <> ''hero'' and creature.in_sight(x, y) to find targets.';
+  'Attack a visible target with a carried weapon. Query item.items where holder_id = (SELECT id FROM creature.creatures WHERE kind = ''hero'') to find weapon IDs; query creature.creatures where kind <> ''hero'' and creature.in_sight(x, y) to find targets.';
 
 -- After a rewind, the game restores the turn, hero, and monsters.
 -- This separate counter still increases, so the game remembers the rewind.
@@ -178,19 +178,19 @@ begin
 end $$;
 
 -- ── Keep the player from seeing places the hero has not seen ────────────────
--- The player can read only cells the hero has seen and creatures within sight.
+-- The player can read only cells the hero has seen, and creatures and floor items within sight.
 
 alter table map.cell       enable row level security;
-alter table creature.thing enable row level security;
+alter table creature.creatures enable row level security;
 
 create policy fog on map.cell for select to player
   using (creature.in_sight(x, y)
          or exists (select 1 from map.seen s where (s.x, s.y) = (cell.x, cell.y)));
 
-create policy fog on creature.thing for select to player
+create policy fog on creature.creatures for select to player
   using (creature.in_sight(x, y));
 
-create policy visible_item_entities on item.thing for select to player
+create policy visible_item_entities on item.items for select to player
   using (
     holder_id = (select (creature.hero()).id)
     or (holder_id is null and creature.in_sight(x, y))
@@ -205,7 +205,7 @@ grant execute on function game.move(int, int), game.pick_up(int), game.drink_pot
                           game.attack(int, int), game.rewound(),
                           creature.hero(), creature.in_sight(int, int) to player;
 grant select on map.cell, map.seen, map.settings,
-                creature.thing, creature.species,
-                item.kind, item.thing,
+                creature.creatures, creature.species,
+                item.kind, item.items,
                 clock.turn, clock.log, clock.rewinds,
                 screen.tiles, screen.status, screen.messages to player;

@@ -10,16 +10,16 @@ create view screen.tiles with (security_invoker = true) as
 select distinct on (x, y) x, y, glyph, style
 from (
   select t.x, t.y, s.glyph, t.kind as style, 0 as layer
-  from creature.thing t join creature.species s using (kind)
+  from creature.creatures t join creature.species s using (kind)
   union all
   select c.x, c.y,
          case when c.walkable then '·' else '#' end,
          case when creature.in_sight(c.x, c.y) then 'lit' else 'remembered' end,
-         1
+         2
   from map.cell c
   union all
-  select item.x, item.y, kind.glyph, 'item', 0
-  from item.thing item join item.kind kind using (kind)
+  select item.x, item.y, kind.glyph, 'item', 1
+  from item.items item join item.kind kind using (kind)
   where item.holder_id is null
 ) layers
 order by x, y, layer;

@@ -21,7 +21,7 @@ export function mountConsole({
   history,
   schedule,
 }: {
-  input: HTMLInputElement
+  input: HTMLTextAreaElement
   output: HTMLElement
   db: GameDatabase
   session: Session
@@ -62,21 +62,55 @@ export function mountConsole({
 
   const typed: string[] = []
   let cursor = 0
+  let browsingHistory = false
 
   input.addEventListener('keydown', (event: KeyboardEvent) => {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    if (event.key === 'Enter' && (event.altKey || event.getModifierState('Alt'))) {
       event.preventDefault()
-      cursor = Math.max(0, Math.min(typed.length, cursor + (event.key === 'ArrowUp' ? -1 : 1)))
+      input.setRangeText('\n', input.selectionStart, input.selectionEnd, 'end')
+      browsingHistory = false
+      cursor = typed.length
+    } else if (
+      event.key === 'ArrowUp'
+      && input.selectionStart === input.selectionEnd
+      && input.value.lastIndexOf('\n', input.selectionStart - 1) === -1
+      && typed.length > 0
+    ) {
+      event.preventDefault()
+      if (!browsingHistory) {
+        cursor = typed.length
+        browsingHistory = true
+      }
+      cursor = Math.max(0, cursor - 1)
       input.value = typed[cursor] ?? ''
-    } else if (event.key === 'Enter') {
+    } else if (
+      event.key === 'ArrowDown'
+      && browsingHistory
+      && input.selectionStart === input.selectionEnd
+      && input.value.indexOf('\n', input.selectionStart) === -1
+    ) {
+      event.preventDefault()
+      cursor = Math.min(typed.length, cursor + 1)
+      input.value = typed[cursor] ?? ''
+      if (cursor === typed.length) {
+        browsingHistory = false
+      }
+    } else if (event.key === 'Enter' && !event.altKey) {
+      event.preventDefault()
       const text = input.value
       if (text.trim()) {
         typed.push(text)
       }
       cursor = typed.length
+      browsingHistory = false
       input.value = ''
       scheduleConsoleInput(text)
     }
+  })
+
+  input.addEventListener('input', () => {
+    browsingHistory = false
+    cursor = typed.length
   })
 
   output.addEventListener('click', (event: MouseEvent) => {

@@ -18,13 +18,16 @@
     .rat { color: var(--rat); }
     .ogre { color: var(--ogre); font-weight: bold; }
     #hud { color: var(--hero); }
-    #log { min-height: 8em; }
+    #log { min-height: 2em; }
     small, h3 { color: var(--lit); font-weight: normal; margin: 0; }
     h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; }
     code { color: var(--fg); }
 
-    input { width: 100%; box-sizing: border-box; background: var(--panel); color: var(--fg); border: 1px solid var(--dim); padding: 8px; font: inherit; }
-    input:focus { outline: 1px solid var(--hero); }
+    textarea { width: 100%; min-height: 2.5em; box-sizing: border-box; resize: vertical; background: var(--panel); color: var(--fg); border: 1px solid var(--dim); padding: 8px; font: inherit; }
+    textarea:focus { outline: 1px solid var(--hero); }
+    details { color: var(--lit); }
+    summary { cursor: pointer; }
+    details pre { max-width: 100%; overflow: auto; white-space: pre-wrap; }
     #cheat-out { max-height: 46vh; overflow: auto; }
     #cheat-out h4 { margin: 12px 0 4px; color: var(--hero); font-weight: normal; }
     #cheat-out table { border-collapse: collapse; }
@@ -47,15 +50,57 @@
       <div id="hud"></div>
       <pre id="map"></pre>
       <div id="log"></div>
-      <small>Play through SQL in the console. Use <code>select game.move(1, 0)</code> to move and <code>\rewind</code> to undo a turn.</small>
+      <details>
+        <summary>Map symbols</summary>
+        <small><code>@</code> you · <code>r</code> rat · <code>O</code> ogre · <code>h</code> health potion · <code>b</code> bomb · <code>/</code> sword · <code>)</code> bow · <code>·</code> floor · <code>#</code> wall</small>
+      </details>
+      <details>
+        <summary>SQL cheatsheet</summary>
+        <pre><code>-- Move east
+select game.move(1, 0);
+
+-- Query carried items
+select item.id, item.kind, kind.name
+from item.items item join item.kind kind using (kind)
+where item.holder_id = (select id from creature.creatures where kind = 'hero');
+
+-- Find visible items on the floor
+select item.id, item.kind, kind.name, item.x, item.y
+from item.items item join item.kind kind using (kind)
+where item.holder_id is null and creature.in_sight(item.x, item.y);
+
+-- Find floor items next to you that you can pick up
+select item.id, item.kind, kind.name
+from item.items item
+join item.kind kind using (kind)
+cross join creature.hero() hero
+where item.holder_id is null
+  and abs(item.x - hero.x) + abs(item.y - hero.y) <= 1;
+
+-- Pick up an adjacent item (replace 17 with its id)
+select game.pick_up(17);
+
+-- Attack a visible rat with your sword
+select game.attack(
+  (select id from item.items
+   where kind = 'sword'
+     and holder_id = (select id from creature.creatures where kind = 'hero')
+   limit 1),
+  (select target.id from creature.creatures target
+   where target.kind = 'rat' and creature.in_sight(target.x, target.y)
+   limit 1)
+);
+
+-- Rewind the last turn
+\rewind</code></pre>
+      </details>
     </section>
 
     <section>
       <h3>Console, as role <code>player</code></h3>
-      <small>Filter <code>item.thing</code> by <code>holder_id</code> and floor coordinates to find items. Use <code>select game.pick_up(ID)</code> when adjacent.</small>
-      <input id="cheat" placeholder="select * from item.thing where holder_id is null and creature.in_sight(x, y)" autocomplete="off" spellcheck="false">
+      <textarea id="cheat" rows="1" placeholder="Try \dn or \df; Enter runs, Alt+Enter adds a line" autocomplete="off" spellcheck="false"></textarea>
       <div id="cheat-out"></div>
-      <h3>Every statement sent (newest first)</h3>
+      <h3>History</h3>
       <div id="history"></div>
     </section>
   </main>

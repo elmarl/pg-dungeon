@@ -3,7 +3,18 @@ import { escapeHtml } from '../html.js'
 import type { Session } from '../session.js'
 import { runPsqlCommand } from './psql.js'
 
-const REFUSED = /^\s*(reset|set\s+(role|session)|begin|start|commit|end|rollback|abort|savepoint|release)\b/i
+const REFUSED = /^\s*(?:reset\b|set\s+(?:role|session)\b|begin\b|start\b|commit\b|end\b|rollback\b|abort\b|savepoint\b|release\b)/i
+const QUOTED_VALUE = /'(?:''|[^'])*'|"(?:""|[^"])*"/g
+
+export function isRefusedCommand(text: string): boolean {
+  const sql = text.replace(QUOTED_VALUE, ' ')
+  if (sql.includes('--') || sql.includes('/*')) {
+    return true
+  }
+
+  const statements = sql.split(';').filter((statement) => statement.trim())
+  return statements.length > 1 || statements.some((statement) => REFUSED.test(statement))
+}
 
 type ResultRow = Record<string, unknown>
 type ConsoleResult = {
@@ -35,8 +46,8 @@ export function mountConsole({
       return
     }
     history.add('you', text)
-    if (REFUSED.test(text)) {
-      output.innerHTML = '<p class="err">Refused by the page: PGlite runs as superuser under SET ROLE, so role and transaction changes would be a real escape.</p>'
+    if (isRefusedCommand(text)) {
+      output.innerHTML = '<p class="err">Refused by the page: SQL comments, multiple statements, and transaction control are not allowed.</p>'
       return
     }
     try {

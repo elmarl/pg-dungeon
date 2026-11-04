@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "tsx --test test/*.test.ts",
+    "test": "tsx test/run-tests.ts",
     "lint": "eslint src test",
     "dev": "vite",
     "build": "vite build",

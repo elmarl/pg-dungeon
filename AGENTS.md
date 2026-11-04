@@ -29,4 +29,4 @@
 
 ## Commits
 
-- Before committing, make sure the tests pass and TypeScript compiles without errors. The pre-commit hook runs `npm test` and `npx tsc --noEmit`; do not commit if either check fails.
+- Before committing, format staged supported files with Prettier using its default settings. The pre-commit hook runs `lint-staged` to format them, then runs `npm test` and `npx tsc --noEmit`. Do not commit if formatting, tests, or compilation fail.

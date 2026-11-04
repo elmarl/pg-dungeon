@@ -1,10 +1,12 @@
 # pg-dungeon
 
-A small cave crawler where PostgreSQL is the game engine. I wanted to exercise writing sql faster so why not make a game for that. The game runs on the browser usng [PGlite](https://electric-sql.com/product/pglite).
+A small cave crawler where PostgreSQL is the game engine. I wanted to exercise writing sql faster and to experiment with advanced PG features, so I decided to make it into a game. The game runs on the browser using [PGlite](https://electric-sql.com/product/pglite).
 
 All the game rules and entities live in SQL, so be ready to explore what's available using \dn, \df etc. Typescript is here to init the db, manage the console and render the game.
 
 RLS protects fog of war, and foreign keys ensure creatures stay on walkable tiles.
+
+![pg-dungeon](image.png)
 
 ```sh
 npm install
@@ -14,6 +16,22 @@ npm run lint
 ```
 
 Tests live in `test/`, split by domain. Shared database setup is in `test/support/`.
+
+## Production build
+
+Build the static app with:
+
+```sh
+npm run build
+```
+
+Vite writes the production files to `dist/`. To check the production build locally, run:
+
+```sh
+npx vite preview
+```
+
+Deploy the contents of `dist/` to any static web host. The game database runs in the browser through PGlite, so no separate database server is required.
 
 ## Play through SQL
 

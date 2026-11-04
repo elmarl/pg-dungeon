@@ -45,7 +45,7 @@ as $$
     select cell.x, cell.y
     from map.cell cell
     where cell.walkable
-      and point(cell.x, cell.y) <-> origin between 3 and 6
+      and point(cell.x, cell.y) <-> origin between 2 and 6
       and not exists (
         select 1 from creature.creatures creature
         where (creature.x, creature.y) = (cell.x, cell.y)

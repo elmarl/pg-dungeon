@@ -7,7 +7,8 @@
     "test": "tsx test/run-tests.ts",
     "lint": "eslint src test",
     "dev": "vite",
-    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
     "format": "prettier --write \"**/*.{cjs,css,html,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{cjs,css,html,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}\"",
     "prepare": "husky"

@@ -51,6 +51,7 @@
         line-height: 1.05;
         letter-spacing: 0.15em;
         overflow-x: auto;
+        overflow-y: hidden;
       }
       .remembered {
         color: var(--dim);
@@ -207,7 +208,7 @@ from item.items item
 join item.kind kind using (kind)
 cross join creature.hero() hero
 where item.holder_id is null
-  and abs(item.x - hero.x) + abs(item.y - hero.y) <= 1;
+  and abs(item.x - hero.x) + abs(item.y - hero.y) &lt;= 1;
 
 -- Pick up an adjacent item (replace 17 with its id)
 select game.pick_up(17);

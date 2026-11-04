@@ -19,13 +19,13 @@ Tests live in `test/`, split by domain. Shared database setup is in `test/suppor
 
 ## Production build
 
-Build the static app with:
+Type-check the TypeScript and build the static app with:
 
 ```sh
 npm run build
 ```
 
-Vite writes the production files to `dist/`. To check the production build locally, run:
+The build runs the type check first and stops if it finds errors. Vite writes the production files to `dist/`. To check the production build locally, run:
 
 ```sh
 npx vite preview

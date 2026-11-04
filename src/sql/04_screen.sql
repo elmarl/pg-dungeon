@@ -3,7 +3,7 @@
 -- Otherwise, it would run with the view owner's permissions and could reveal hidden areas.
 
 create schema screen;
-comment on schema screen is 'What the player sees: tiles, status line, messages. Views run as the viewer.';
+comment on schema screen is 'What the player sees: tiles, visible targets, status, and messages. Views run as the viewer.';
 
 -- One row per visible tile. A creature covers the floor beneath it.
 create view screen.tiles with (security_invoker = true) as
@@ -17,6 +17,10 @@ from (
          case when creature.in_sight(c.x, c.y) then 'lit' else 'remembered' end,
          1
   from map.cell c
+  union all
+  select item.x, item.y, kind.glyph, 'item', 0
+  from item.thing item join item.kind kind using (kind)
+  where item.holder_id is null
 ) layers
 order by x, y, layer;
 

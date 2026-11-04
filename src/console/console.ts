@@ -40,10 +40,19 @@ export function mountConsole({
       return
     }
     try {
-      const results = await session.attempt(async () =>
-        text.startsWith('\\')
-          ? runPsqlCommand(db, text)
-          : db.rows(text).then((rows) => [{ title: `${rows.length} rows`, rows }]))
+      if (text.trim() === '\\rewind') {
+        await session.rewind()
+        const status = await db.rows('select turn, rewinds from screen.status')
+        output.innerHTML = renderConsoleResult({ title: 'Rewind', rows: status })
+        return
+      }
+
+      const results = await session.executeCommand(async () => {
+        if (text.startsWith('\\')) {
+          return runPsqlCommand(db, text)
+        }
+        return db.rows(text).then((rows) => [{ title: `${rows.length} rows`, rows }])
+      })
       output.innerHTML = results.map(renderConsoleResult).join('')
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)

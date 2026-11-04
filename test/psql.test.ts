@@ -8,6 +8,8 @@ const psqlCommands = [
   '\\dn',
   '\\dt',
   '\\dt creature',
+  '\\dt item',
+  '\\dt map',
   '\\d creature.thing',
   '\\d map.cell',
   '\\d screen.tiles',
@@ -30,6 +32,63 @@ test('\\df lists game functions with descriptive names', async () => {
   await withGameFixture(async ({ db }) => {
     const [{ rows }] = await runPsqlCommand(db, '\\df')
     assert.ok(rows.some((row) => row.name === 'game.remember_seen_cells'))
+  })
+})
+
+test('\\df explains how to pick up a visible item', async () => {
+  await withGameFixture(async ({ db }) => {
+    const [{ rows }] = await runPsqlCommand(db, '\\df')
+    const pickUpFunction = rows.find((row) => row.name === 'game.pick_up')
+    assert.match(String(pickUpFunction?.description), /item\.thing.*holder_id is null/i)
+  })
+})
+
+test('visible targets must be queried from creature entities, not a convenience view', async () => {
+  await withGameFixture(async ({ db }) => {
+    const targetViews = await db.rows<{ name: string }>(`
+      select relation.relname as name
+      from pg_class relation
+      join pg_namespace namespace on namespace.oid = relation.relnamespace
+      where namespace.nspname = 'screen' and relation.relname = 'targets'
+    `)
+    assert.deepEqual(targetViews, [])
+
+    const visibleTargets = await db.rows<{ id: number }>(`
+      select target.id
+      from creature.thing target
+      join creature.species species using (kind)
+      where target.kind <> 'hero'
+        and creature.in_sight(target.x, target.y)
+      limit 1
+    `)
+    assert.ok(visibleTargets.length > 0)
+  }, {
+    setup: async (db) => {
+      await db.exec(`
+        update creature.thing target
+        set (x, y) = (
+          select cell.x, cell.y
+          from creature.thing hero
+          join map.cell cell
+            on cell.walkable
+           and abs(cell.x - hero.x) + abs(cell.y - hero.y) = 1
+          where hero.kind = 'hero'
+            and not exists (
+              select 1 from creature.thing occupant
+              where (occupant.x, occupant.y) = (cell.x, cell.y)
+            )
+          limit 1
+        )
+        where target.id = (select id from creature.thing where kind = 'rat' order by id limit 1)
+      `)
+    },
+  })
+})
+
+test('\\dn lists the item-entity schema', async () => {
+  await withGameFixture(async ({ db }) => {
+    const [{ rows }] = await runPsqlCommand(db, '\\dn')
+    assert.ok(rows.some((row) => row.schema === 'item'))
   })
 })
 

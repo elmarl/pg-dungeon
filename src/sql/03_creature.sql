@@ -41,10 +41,13 @@ as $$ select * from creature.thing where kind = 'hero' $$;
 create function creature.in_sight(cx int, cy int) returns boolean
 language sql stable security definer set search_path = ''
 as $$
-  select point(cx, cy) <-> h.pos <= s.sight
-  from creature.thing h join creature.species s using (kind)
-  where h.kind = 'hero'
+  -- <-> measures straight-line distance between PostgreSQL points.
+  select point(cx, cy) <-> hero.pos <= species.sight
+  from creature.thing hero join creature.species species using (kind)
+  where hero.kind = 'hero'
 $$;
+comment on function creature.in_sight(int, int) is
+  'True when a map coordinate is within the hero''s sight radius, measured as straight-line distance.';
 
 create function creature.spawn_hero(at point) returns void
 language sql
@@ -80,18 +83,18 @@ with recursive flood (x, y, d) as (
 select x, y, min(d) as d from flood group by x, y
 with no data;
 
-create function creature.hit(attacker creature.thing, victim creature.thing) returns void
+create function creature.hit(attacker creature.thing, victim creature.thing, weapon_damage int default null) returns void
 language plpgsql
 as $$
 declare
-  dmg     int := (select s.dmg from creature.species s where s.kind = attacker.kind);
+  dmg     int := coalesce(weapon_damage, (select s.dmg from creature.species s where s.kind = attacker.kind));
   hp_left int;
 begin
   update creature.thing set hp = hp - dmg where id = victim.id returning hp into hp_left;
 
   if victim.kind = 'hero' then
     perform clock.say(format('The %s hits you for %s.', attacker.kind, dmg));
-    if hp_left <= 0 then perform clock.say('You die. Press U to rewind time.'); end if;
+    if hp_left <= 0 then perform clock.say('You die. Use \rewind to turn back time.'); end if;
   elsif hp_left > 0 then
     perform clock.say(format('You hit the %s.', victim.kind));
   else

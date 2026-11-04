@@ -1,22 +1,24 @@
 import type { GameDatabase } from './db.js'
 
 export interface Session {
-  move(dx: number, dy: number): Promise<void>
+  executeCommand<T>(command: () => Promise<T>): Promise<T>
   rewind(): Promise<void>
-  attempt<T>(fn: () => Promise<T>): Promise<T>
 }
 
 export async function startSession(db: GameDatabase): Promise<Session> {
   await db.exec('begin; set role player')
 
   return {
-    async move(dx: number, dy: number): Promise<void> {
+    async executeCommand<T>(command: () => Promise<T>): Promise<T> {
       await db.exec('savepoint turn')
       try {
-        const [{ spent }] = await db.query<{ spent: boolean }>(`select game.move(${dx}, ${dy}) as spent`)
-        if (!spent) {
+        const [{ turn: turnBefore }] = await db.rows<{ turn: number }>('select turn from screen.status')
+        const result = await command()
+        const [{ turn: turnAfter }] = await db.rows<{ turn: number }>('select turn from screen.status')
+        if (turnAfter === turnBefore) {
           await db.exec('release savepoint turn')
         }
+        return result
       } catch (error) {
         return recoverFailedAction(db, 'turn', error)
       }
@@ -40,21 +42,10 @@ export async function startSession(db: GameDatabase): Promise<Session> {
       await db.exec('savepoint rewind_action')
       try {
         await db.query('select game.rewound()')
+        await db.exec('release savepoint rewind_action')
       } catch (error) {
         return recoverFailedAction(db, 'rewind_action', error)
       }
-    },
-
-    async attempt<T>(fn: () => Promise<T>): Promise<T> {
-      await db.exec('savepoint attempt')
-      let result: T
-      try {
-        result = await fn()
-      } catch (error) {
-        return recoverFailedAction(db, 'attempt', error)
-      }
-      await rollbackAndRelease(db, 'attempt')
-      return result
     },
   }
 }

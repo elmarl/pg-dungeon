@@ -4,7 +4,7 @@ import { withGameFixture } from './support/game-fixture.js'
 
 test('rewinding restores the previous turn and increments the rewind counter', async () => {
   await withGameFixture(async ({ db, session }) => {
-    await session.move(0, 0)
+    await session.executeCommand(() => db.rows('select game.move(0, 0)'))
     const [{ turn: turnBeforeRewind }] = await db.rows<{ turn: number }>('select turn from screen.status')
     assert.equal(turnBeforeRewind, 1)
 
@@ -34,7 +34,7 @@ test('a monster attacks after the hero moves next to it', async () => {
     `)
     const dx = Math.sign(monsterX - heroX)
     const dy = Math.sign(monsterY - heroY)
-    await session.move(dx, dy)
+    await session.executeCommand(() => db.rows(`select game.move(${dx}, ${dy})`))
     const [{ hp: currentHp, turn }] = await db.rows<{ hp: number; turn: number }>('select hp, turn from screen.status')
 
     assert.equal(turn, 1, 'a successful action should spend one turn')

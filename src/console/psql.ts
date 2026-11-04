@@ -1,16 +1,17 @@
 import type { GameDatabase } from '../db.js'
 
-const GAME_SCHEMAS = `n.nspname in ('clock', 'map', 'creature', 'screen', 'game')`
+const GAME_SCHEMAS = `n.nspname in ('clock', 'map', 'creature', 'item', 'screen', 'game')`
 
 const SCHEMAS = `
   select n.nspname as schema, obj_description(n.oid, 'pg_namespace') as holds
   from pg_namespace n
   where ${GAME_SCHEMAS}
-  order by array_position(array['game', 'screen', 'creature', 'map', 'clock'], n.nspname::text)`
+  order by array_position(array['game', 'screen', 'item', 'creature', 'map', 'clock'], n.nspname::text)`
 
 const TABLES = `
   select n.nspname || '.' || c.relname as name,
          case c.relkind when 'r' then 'table' when 'v' then 'view' when 'm' then 'materialized view' else 'sequence' end as type,
+         obj_description(c.oid, 'pg_class') as description,
          case when c.relrowsecurity then 'yes' else '' end as rls,
          concat_ws(', ',
            case when has_table_privilege(c.oid, 'select') then 'select' end,
@@ -51,6 +52,7 @@ const FUNCTIONS = `
   select n.nspname || '.' || p.proname as name,
          pg_get_function_arguments(p.oid) as arguments,
          pg_get_function_result(p.oid) as returns,
+         obj_description(p.oid, 'pg_proc') as description,
          case when p.prosecdef then 'owner (definer)' else 'caller' end as runs_as,
          case when has_function_privilege(p.oid, 'execute') then 'yes' else 'no' end as you_can_call
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -63,9 +65,10 @@ const HELP = [
   { command: '\\dn', shows: 'schemas: one per part of the game' },
   { command: '\\dt [schema]', shows: 'tables and views, and what the player role may do to each' },
   { command: '\\d <schema.table>', shows: 'columns, constraints and row-level security, or a view\'s query' },
-  { command: '\\df', shows: 'functions, who they run as, and whether you may call them' },
+  { command: '\\df', shows: 'functions, arguments, descriptions, who they run as, and whether you may call them' },
   { command: '\\sf <schema.function>', shows: 'a function\'s source' },
-  { command: 'anything else', shows: 'runs as SQL in a savepoint that is rolled back afterwards' },
+  { command: '\\rewind', shows: 'undoes the most recent game turn' },
+  { command: 'anything else', shows: 'runs as SQL; successful actions persist and failed statements are rolled back' },
 ]
 
 type TableRow = Record<string, unknown>

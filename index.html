@@ -47,13 +47,13 @@
       <div id="hud"></div>
       <pre id="map"></pre>
       <div id="log"></div>
-      <small>Move with arrows / WASD / HJKL. Walk into a monster to attack. U rewinds one turn.</small>
+      <small>Play through SQL in the console. Use <code>select game.move(1, 0)</code> to move and <code>\rewind</code> to undo a turn.</small>
     </section>
 
     <section>
       <h3>Console, as role <code>player</code></h3>
-      <small>Not sure what to query? Start with <code>\dn</code> and click your way down. <code>\?</code> lists commands.</small>
-      <input id="cheat" placeholder="\dn" autocomplete="off" spellcheck="false">
+      <small>Filter <code>item.thing</code> by <code>holder_id</code> and floor coordinates to find items. Use <code>select game.pick_up(ID)</code> when adjacent.</small>
+      <input id="cheat" placeholder="select * from item.thing where holder_id is null and creature.in_sight(x, y)" autocomplete="off" spellcheck="false">
       <div id="cheat-out"></div>
       <h3>Every statement sent (newest first)</h3>
       <div id="history"></div>

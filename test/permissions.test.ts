@@ -13,7 +13,7 @@ const forbiddenPlayerQueries = [
 for (const sql of forbiddenPlayerQueries) {
   test(`player cannot execute: ${sql}`, async () => {
     await withGameFixture(async ({ db, session }) => {
-      await assert.rejects(session.attempt(() => db.rows(sql)), /permission denied/)
+      await assert.rejects(session.executeCommand(() => db.rows(sql)), /permission denied/)
     })
   })
 }

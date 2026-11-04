@@ -11,7 +11,7 @@
     "prepare": "husky"
   },
   "keywords": [],
-  "author": "",
+  "author": "Elmar Laigna",
   "license": "ISC",
   "type": "module",
   "dependencies": {

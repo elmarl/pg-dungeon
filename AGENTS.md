@@ -20,6 +20,7 @@
 - Run the relevant tests after implementation.
 - Keep tests under `test/`, grouped into separate files by domain (for example, gameplay, session recovery, permissions, and SQL console commands). Put reusable setup in `test/support/`.
 - Each test should assert one clearly named behavior so a failure identifies what broke. Avoid a single long script that mixes unrelated checks.
+- Follow the detailed test-writing and runtime guidance in [test/AGENTS.md](test/AGENTS.md).
 
 ## Checks
 

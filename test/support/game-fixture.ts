@@ -12,6 +12,7 @@ export interface GameFixture {
 
 export interface GameFixtureOptions {
   rewriteQuery?: (sql: string) => string
+  setup?: (db: GameDatabase) => Promise<void>
 }
 
 export async function createGameFixture(options: GameFixtureOptions = {}): Promise<GameFixture> {
@@ -34,6 +35,7 @@ export async function createGameFixture(options: GameFixtureOptions = {}): Promi
     rows: async <TRow extends DbRow = DbRow>(sql: string, params?: unknown[]) => (await database.query(sql, params)).rows as TRow[],
   }
 
+  await options.setup?.(db)
   const session = await startSession(db)
   return { database, db, session }
 }

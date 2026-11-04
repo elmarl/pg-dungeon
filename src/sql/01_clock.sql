@@ -14,7 +14,6 @@ create table clock.log (
 );
 
 -- Rewinding restores the game, but does not restore this counter.
--- It is the one number that remembers you cheated.
 create sequence clock.rewinds;
 
 create function clock.tick() returns void

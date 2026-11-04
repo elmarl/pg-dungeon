@@ -29,7 +29,6 @@ create table creature.creatures (
   foreign key (x, y, on_floor) references map.cell (x, y, walkable),
 
   -- Two creatures cannot occupy the same spot.
-  -- Trying to move onto an occupied spot is how the game handles an attack.
   exclude using gist (pos with ~=)
 );
 
@@ -41,7 +40,6 @@ as $$ select * from creature.creatures where kind = 'hero' $$;
 create function creature.in_sight(cx int, cy int) returns boolean
 language sql stable security definer set search_path = ''
 as $$
-  -- <-> measures straight-line distance between PostgreSQL points.
   select point(cx, cy) <-> hero.pos <= species.sight
   from creature.creatures hero join creature.species species using (kind)
   where hero.kind = 'hero'

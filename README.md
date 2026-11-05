@@ -41,20 +41,29 @@ npm run smoke
 The pre-commit hook runs these tests as well. Install Chromium once on each
 development machine before committing.
 
-Without `SMOKE_BASE_URL`, the test builds the production bundle and serves it
-locally. To smoke-test a deployed URL directly, set `SMOKE_BASE_URL` before
-running `npm run smoke`.
+## Deployment and CI/CD
 
-The `Deployment smoke test` GitHub Actions workflow runs for successful GitHub
-deployments whose environment is `Production` and whose deployment status
-includes a target URL. Ensure the Vercel GitHub integration publishes those
-deployment statuses for the repository.
+GitHub runs E2E, lint, typecheck, and unit tests on pushes to `main`. Vercel
+runs the smoke test against the deployment. All five checks must pass before
+production.
 
-The browser tests cover initial rendering, a successful turn, rewinding that
-turn, and recovery after a failed SQL command.
+```mermaid
+flowchart TD
+    push["Push to main"] --> e2e["GitHub Actions: E2E (Playwright)"]
+    push --> lint["GitHub Actions: Lint"]
+    push --> typecheck["GitHub Actions: Typecheck"]
+    push --> unit["GitHub Actions: Unit tests"]
 
-Separate workflows run unit tests, lint, type checking, and Playwright on pushes
-to `main`. Require them in Vercel to block promotion if any fail.
+    push --> dispatch["Vercel deployment dispatch"]
+    dispatch --> smoke["GitHub Actions: smoke<br/>Playwright against deployment URL"]
+
+    e2e --> gate{"All five required checks pass?"}
+    lint --> gate
+    typecheck --> gate
+    unit --> gate
+    smoke --> gate
+    gate -- Yes --> production["Vercel promotes deployment to production"]
+```
 
 ## Production build
 
@@ -165,7 +174,7 @@ The game uses one database transaction for its full session and relies on Postgr
 | Mechanic         | Postgres feature                                                                                                                                                        |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Walls            | A composite foreign key from `creature.creatures (x, y, on_floor)` to `map.cell (x, y, walkable)`. Walking into rock is a `foreign_key_violation`.                      |
-| Attacking        | An exclusion constraint prevents two creatures from sharing a point. An attack updates the selected enemy in SQL.                                                       |
+| Attacking        | The exclusion constraint detects collisions. `game.move` turns walking into an enemy into a hit, and `game.attack` handles weapon attacks.                              |
 | Fog of war       | Row level security prevents the `player` role from reading cells or monsters outside the hero's sight.                                                                  |
 | What's on screen | Views created `with (security_invoker = true)`. A plain view runs as its owner and could skip the fog.                                                                  |
 | Map memory       | `map.seen`, which the fog policy also lets through. Monsters are not remembered.                                                                                        |

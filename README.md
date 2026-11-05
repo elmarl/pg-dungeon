@@ -13,7 +13,11 @@ npm install
 npm run dev
 npm test
 npm run lint
+npm run format
+npm run format:check
 ```
+
+`npm run format` uses Prettier for app files and `sql-formatter` for PostgreSQL files. Staged SQL files are formatted automatically before commit.
 
 Tests live in `test/`, split by domain. Shared database setup is in `test/support/`.
 

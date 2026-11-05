@@ -1,62 +1,62 @@
 -- Creatures: the hero and the monsters, how they see, smell, move and fight.
-
 create schema creature;
+
 comment on schema creature is 'The hero and the monsters: bodies, sight, the monster AI, and combat.';
 
 create table creature.species (
-  kind  text primary key,
+  kind text primary key,
   glyph text not null,
-  hp    int  not null,
-  dmg   int  not null,
-  sight int  not null
+  hp int not null,
+  dmg int not null,
+  sight int not null
 );
 
-insert into creature.species values
+insert into
+  creature.species
+values
   ('hero', '@', 30, 4, 6),
-  ('rat',  'r',  4, 1, 0),
+  ('rat', 'r', 4, 1, 0),
   ('ogre', 'O', 12, 3, 0);
 
 create table creature.creatures (
-  id       serial primary key,
-  kind     text not null references creature.species,
-  hp       int  not null,
-  x        int  not null,
-  y        int  not null,
-  pos      point generated always as (point(x, y)) stored,
+  id serial primary key,
+  kind text not null references creature.species,
+  hp int not null,
+  x int not null,
+  y int not null,
+  pos point generated always as (point(x, y)) stored,
   on_floor boolean not null default true check (on_floor),
-
   -- A creature can stand only on a cell that exists and can be walked on.
   foreign key (x, y, on_floor) references map.cell (x, y, walkable),
-
   -- Two creatures cannot occupy the same spot.
-  exclude using gist (pos with ~=)
+  exclude using gist (
+    pos
+    with
+      ~=
+  )
 );
 
 -- The game can always find the hero, even when the player cannot see it.
-create function creature.hero() returns creature.creatures
-language sql stable security definer set search_path = ''
-as $$ select * from creature.creatures where kind = 'hero' $$;
+create function creature.hero () returns creature.creatures language sql stable security definer
+set
+  search_path = '' as $$ select * from creature.creatures where kind = 'hero' $$;
 
-create function creature.in_sight(cx int, cy int) returns boolean
-language sql stable security definer set search_path = ''
-as $$
+create function creature.in_sight (cx int, cy int) returns boolean language sql stable security definer
+set
+  search_path = '' as $$
   select point(cx, cy) <-> hero.pos <= species.sight
   from creature.creatures hero join creature.species species using (kind)
   where hero.kind = 'hero'
 $$;
-comment on function creature.in_sight(int, int) is
-  'True when a map coordinate is within the hero''s sight radius, measured as straight-line distance.';
 
-create function creature.spawn_hero(at point) returns void
-language sql
-as $$
+comment on function creature.in_sight (int, int) is 'True when a map coordinate is within the hero''s sight radius, measured as straight-line distance.';
+
+create function creature.spawn_hero (at point) returns void language sql as $$
   insert into creature.creatures (kind, hp, x, y)
   select kind, hp, at[0]::int, at[1]::int from creature.species where kind = 'hero'
 $$;
 
-create function creature.spawn_monsters(how_many int, away_from point) returns void
-language sql
-as $$
+create function creature.spawn_monsters (how_many int, away_from point) returns void language sql as $$
   insert into creature.creatures (kind, hp, x, y)
   select s.kind, s.hp, c.x, c.y
   from (select x, y, (array['rat', 'rat', 'ogre'])[1 + floor(random() * 3)::int] as kind
@@ -70,20 +70,48 @@ $$;
 -- Find how many steps each reachable cell is from the hero. All monsters use
 -- these distances to find their way. Skip repeated cell-and-distance pairs.
 create materialized view creature.scent as
-with recursive flood (x, y, d) as (
-  select (creature.hero()).x, (creature.hero()).y, 0
-  union
-  select c.x, c.y, f.d + 1
-  from flood f
-  join map.cell c on c.walkable and abs(c.x - f.x) + abs(c.y - f.y) = 1
-  where f.d < 15
-)
-select x, y, min(d) as d from flood group by x, y
-with no data;
+with recursive
+  flood (x, y, d) as (
+    with
+      hero_pos as (
+        select
+          creature.hero () as hero
+      )
+    select
+      (hero).x,
+      (hero).y,
+      0
+    from
+      hero_pos
+    union
+    select
+      c.x,
+      c.y,
+      f.d + 1
+    from
+      flood f
+      join map.cell c on c.walkable
+      and abs(c.x - f.x) + abs(c.y - f.y) = 1
+    where
+      f.d < 15
+  )
+select
+  x,
+  y,
+  min(d) as d
+from
+  flood
+group by
+  x,
+  y
+with
+  no data;
 
-create function creature.hit(attacker creature.creatures, victim creature.creatures, weapon_damage int default null) returns void
-language plpgsql
-as $$
+create function creature.hit (
+  attacker creature.creatures,
+  victim creature.creatures,
+  weapon_damage int default null
+) returns void language plpgsql as $$
 declare
   dmg     int := coalesce(weapon_damage, (select s.dmg from creature.species s where s.kind = attacker.kind));
   hp_left int;
@@ -104,9 +132,7 @@ begin
   end if;
 end $$;
 
-create function creature.monsters_act() returns void
-language plpgsql
-as $$
+create function creature.monsters_act () returns void language plpgsql as $$
 declare
   m    creature.creatures;
   step record;

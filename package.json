@@ -9,12 +9,13 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && vite build",
-    "format": "prettier --write \"**/*.{cjs,css,html,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}\"",
-    "format:check": "prettier --check \"**/*.{cjs,css,html,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}\"",
+    "format": "prettier --write \"**/*.{cjs,css,html,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}\" && node scripts/format-sql.mjs",
+    "format:check": "prettier --check \"**/*.{cjs,css,html,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}\" && node scripts/format-sql.mjs --check",
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{cjs,css,html,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}": "prettier --write"
+    "*.{cjs,css,html,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}": "prettier --write",
+    "*.sql": "node scripts/format-sql.mjs"
   },
   "keywords": [],
   "author": "Elmar Laigna",
@@ -28,6 +29,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.6",
     "prettier": "^3.9.10",
+    "sql-formatter": "^15.9.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.1",

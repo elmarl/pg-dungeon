@@ -1,31 +1,34 @@
 -- The cave: which cells exist, which you can walk on, which the hero has seen.
-
 create schema map;
+
 comment on schema map is 'The cave: cells, walls, and the cells the hero has seen.';
 
 create table map.settings (
-  width     int not null,
-  height    int not null,
+  width int not null,
+  height int not null,
   dig_steps int not null
 );
+
 create unique index settings_single_row on map.settings ((true));
-insert into map.settings values (48, 22, 900);
+
+insert into
+  map.settings
+values
+  (48, 22, 900);
 
 create table map.cell (
-  x        int,
-  y        int,
+  x int,
+  y int,
   walkable boolean not null,
   primary key (x, y),
-  unique (x, y, walkable)        -- Lets the game check that creatures stand on walkable cells.
+  unique (x, y, walkable) -- Lets the game check that creatures stand on walkable cells.
 );
 
 -- Cells the hero has seen once. Walls stay drawn after you walk away.
 create table map.seen (x int, y int, primary key (x, y));
 
 -- Make the cave by taking random steps from the center. Return the starting point.
-create function map.dig(seed float8) returns point
-language plpgsql
-as $$
+create function map.dig (seed float8) returns point language plpgsql as $$
 declare
   w int := (select width from map.settings);
   h int := (select height from map.settings);

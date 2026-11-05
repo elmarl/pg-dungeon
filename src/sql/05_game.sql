@@ -1,21 +1,17 @@
 -- The only actions the player may take and the game details they may read.
-
 create schema game;
+
 comment on schema game is 'The only door in: game actions, new game, rewind, and the player role''s permissions.';
 
 create role player;
 
 -- Keep track of every cell the hero can see.
-create function game.remember_seen_cells() returns void
-language sql
-as $$
+create function game.remember_seen_cells () returns void language sql as $$
   insert into map.seen select x, y from map.cell where creature.in_sight(x, y)
   on conflict do nothing
 $$;
 
-create function game.new_game(seed float8 default random() * 2 - 1) returns void
-language plpgsql
-as $$
+create function game.new_game (seed float8 default random() * 2 - 1) returns void language plpgsql as $$
 declare
   start point := map.dig(seed);
 begin
@@ -30,9 +26,9 @@ begin
   perform clock.say('You wake up in a cave. Something is breathing.');
 end $$;
 
-create function game.finish_turn() returns void
-language plpgsql security definer set search_path = ''
-as $$
+create function game.finish_turn () returns void language plpgsql security definer
+set
+  search_path = '' as $$
 begin
   perform clock.tick();
   perform game.remember_seen_cells();
@@ -40,9 +36,9 @@ begin
 end $$;
 
 -- Return false when a move does not use a turn, such as hitting a wall or moving while dead.
-create function game.move(dx int, dy int) returns boolean
-language plpgsql security definer set search_path = ''
-as $$
+create function game.move (dx int, dy int) returns boolean language plpgsql security definer
+set
+  search_path = '' as $$
 declare
   me creature.creatures := creature.hero();
 begin
@@ -60,12 +56,12 @@ begin
   perform game.finish_turn();
   return true;
 end $$;
-comment on function game.move(int, int) is
-  'Attempt to move by dx and dy map cells, for example game.move(1, 0) moves east. A successful move costs a turn.';
 
-create function game.pick_up(item_id int) returns void
-language plpgsql security definer set search_path = ''
-as $$
+comment on function game.move (int, int) is 'Attempt to move by dx and dy map cells, for example game.move(1, 0) moves east. A successful move costs a turn.';
+
+create function game.pick_up (item_id int) returns void language plpgsql security definer
+set
+  search_path = '' as $$
 declare
   me creature.creatures := creature.hero();
   found_item item.items;
@@ -84,12 +80,12 @@ begin
   perform clock.say(format('You pick up the %s.', (select name from item.kind where kind = found_item.kind)));
   perform game.finish_turn();
 end $$;
-comment on function game.pick_up(int) is
-  'Pick up a floor item next to the hero. Query item.items with holder_id IS NULL and creature.in_sight(x, y) to find its ID.';
 
-create function game.drink_potion(item_id int) returns void
-language plpgsql security definer set search_path = ''
-as $$
+comment on function game.pick_up (int) is 'Pick up a floor item next to the hero. Query item.items with holder_id IS NULL and creature.in_sight(x, y) to find its ID.';
+
+create function game.drink_potion (item_id int) returns void language plpgsql security definer
+set
+  search_path = '' as $$
 declare
   me creature.creatures := creature.hero();
   potion item.kind;
@@ -108,12 +104,12 @@ begin
   perform clock.say(format('You drink a %s.', potion.name));
   perform game.finish_turn();
 end $$;
-comment on function game.drink_potion(int) is
-  'Drink a carried potion. Query item.items where holder_id = (SELECT id FROM creature.creatures WHERE kind = ''hero'') and kind = ''healing_potion'' to find its ID.';
 
-create function game.attack(weapon_id int, target_id int) returns int
-language plpgsql security definer set search_path = ''
-as $$
+comment on function game.drink_potion (int) is 'Drink a carried potion. Query item.items where holder_id = (SELECT id FROM creature.creatures WHERE kind = ''hero'') and kind = ''healing_potion'' to find its ID.';
+
+create function game.attack (weapon_id int, target_id int) returns int language plpgsql security definer
+set
+  search_path = '' as $$
 declare
   me creature.creatures := creature.hero();
   weapon item.kind;
@@ -164,14 +160,14 @@ begin
   perform game.finish_turn();
   return hits;
 end $$;
-comment on function game.attack(int, int) is
-  'Attack a visible target with a carried weapon. Query item.items where holder_id = (SELECT id FROM creature.creatures WHERE kind = ''hero'') to find weapon IDs; query creature.creatures where kind <> ''hero'' and creature.in_sight(x, y) to find targets.';
+
+comment on function game.attack (int, int) is 'Attack a visible target with a carried weapon. Query item.items where holder_id = (SELECT id FROM creature.creatures WHERE kind = ''hero'') to find weapon IDs; query creature.creatures where kind <> ''hero'' and creature.in_sight(x, y) to find targets.';
 
 -- After a rewind, the game restores the turn, hero, and monsters.
 -- This separate counter still increases, so the game remembers the rewind.
-create function game.rewound() returns void
-language plpgsql security definer set search_path = ''
-as $$
+create function game.rewound () returns void language plpgsql security definer
+set
+  search_path = '' as $$
 begin
   perform nextval('clock.rewinds');
   perform clock.say(format('Time folds. You are back at turn %s.', (select n from clock.turn)));
@@ -179,33 +175,79 @@ end $$;
 
 -- ── Keep the player from seeing places the hero has not seen ────────────────
 -- The player can read only cells the hero has seen, and creatures and floor items within sight.
+alter table map.cell enable row level security;
 
-alter table map.cell       enable row level security;
 alter table creature.creatures enable row level security;
 
-create policy fog on map.cell for select to player
-  using (creature.in_sight(x, y)
-         or exists (select 1 from map.seen s where (s.x, s.y) = (cell.x, cell.y)));
+create policy fog on map.cell for
+select
+  to player using (
+    creature.in_sight (x, y)
+    or exists (
+      select
+        1
+      from
+        map.seen s
+      where
+        (s.x, s.y) = (cell.x, cell.y)
+    )
+  );
 
-create policy fog on creature.creatures for select to player
-  using (creature.in_sight(x, y));
+create policy fog on creature.creatures for
+select
+  to player using (creature.in_sight (x, y));
 
-create policy visible_item_entities on item.items for select to player
-  using (
-    holder_id = (select (creature.hero()).id)
-    or (holder_id is null and creature.in_sight(x, y))
+create policy visible_item_entities on item.items for
+select
+  to player using (
+    holder_id = (
+      select
+        (creature.hero ()).id
+    )
+    or (
+      holder_id is null
+      and creature.in_sight (x, y)
+    )
   );
 
 -- ── The player may use game actions and read what is needed to play ─────────
+revoke
+execute on all functions in schema clock,
+map,
+creature,
+item,
+game
+from
+  public;
 
-revoke execute on all functions in schema clock, map, creature, item, game from public;
+grant usage on schema clock,
+map,
+creature,
+item,
+screen,
+game to player;
 
-grant usage on schema clock, map, creature, item, screen, game to player;
-grant execute on function game.move(int, int), game.pick_up(int), game.drink_potion(int),
-                          game.attack(int, int), game.rewound(),
-                          creature.hero(), creature.in_sight(int, int) to player;
-grant select on map.cell, map.seen, map.settings,
-                creature.creatures, creature.species,
-                item.kind, item.items,
-                clock.turn, clock.log, clock.rewinds,
-                screen.tiles, screen.status, screen.messages to player;
+grant
+execute on function game.move (int, int),
+game.pick_up (int),
+game.drink_potion (int),
+game.attack (int, int),
+game.rewound (),
+creature.hero (),
+creature.in_sight (int, int) to player;
+
+grant
+select
+  on map.cell,
+  map.seen,
+  map.settings,
+  creature.creatures,
+  creature.species,
+  item.kind,
+  item.items,
+  clock.turn,
+  clock.log,
+  clock.rewinds,
+  screen.tiles,
+  screen.status,
+  screen.messages to player;

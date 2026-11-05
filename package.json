@@ -27,7 +27,7 @@
   "author": "Elmar Laigna",
   "type": "module",
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.13"
+    "@electric-sql/pglite": "^0.5.14"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

@@ -1,21 +1,29 @@
 name: Deployment smoke test
 
 on:
-  deployment_status:
+  repository_dispatch:
+    types: [vercel.deployment.ready]
 
 permissions:
+  actions: read
   contents: read
   id-token: write
+  statuses: write
 
 jobs:
   smoke:
     if: >-
-      github.event.deployment_status.state == 'success' &&
-      github.event.deployment.environment == 'Production' &&
-      github.event.deployment_status.target_url != ''
+      github.event.client_payload.environment == 'production' &&
+      github.event.client_payload.url != ''
     runs-on: ubuntu-24.04
     steps:
+      - name: Report smoke check to GitHub
+        uses: vercel/repository-dispatch/actions/status@v1
+        with:
+          name: smoke
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.client_payload.git.sha }}
       - uses: ./.github/actions/setup-node-project
       - run: npx playwright install --with-deps chromium
       - name: Request GitHub OIDC token
@@ -28,5 +36,5 @@ jobs:
             core.setOutput('token', token);
       - run: npm run smoke
         env:
-          SMOKE_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          SMOKE_BASE_URL: ${{ github.event.client_payload.url }}
           VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}

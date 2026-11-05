@@ -21,6 +21,24 @@ npm run format:check
 
 Tests live in `test/`, split by domain. Shared database setup is in `test/support/`.
 
+## Browser smoke test
+
+Run the opt-in Playwright smoke test locally with:
+
+```sh
+npx playwright install chromium
+npm run smoke
+```
+
+Without `SMOKE_BASE_URL`, the test builds the production bundle and serves it
+locally. To smoke-test a deployed URL directly, set `SMOKE_BASE_URL` before
+running `npm run smoke`.
+
+The `Deployment smoke test` GitHub Actions workflow runs for successful GitHub
+deployments whose environment is `Production` and whose deployment status
+includes a target URL. Ensure the Vercel GitHub integration publishes those
+deployment statuses for the repository.
+
 ## Production build
 
 Type-check the TypeScript and build the static app with:

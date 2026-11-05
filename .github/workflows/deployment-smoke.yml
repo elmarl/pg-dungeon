@@ -18,17 +18,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Report smoke check to GitHub
-        uses: vercel/repository-dispatch/actions/status@v1
+        uses: vercel/repository-dispatch/actions/status@30f760c6640485cd92f8c785ef361382555fb712 # v1
         with:
           name: smoke
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           ref: ${{ github.event.client_payload.git.sha }}
       - uses: ./.github/actions/setup-node-project
       - run: npx playwright install --with-deps chromium
       - name: Request GitHub OIDC token
         id: oidc
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const token = await core.getIDToken();

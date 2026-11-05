@@ -1,0 +1,12 @@
+name: Set up Node project
+description: Set up Node.js 26 and install dependencies with npm
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v5
+      with:
+        node-version: 26
+        cache: npm
+    - run: npm ci
+      shell: bash

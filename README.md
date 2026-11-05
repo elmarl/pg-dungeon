@@ -45,8 +45,8 @@ deployment statuses for the repository.
 The browser tests cover initial rendering, a successful turn, rewinding that
 turn, and recovery after a failed SQL command.
 
-On pushes to `main`, `Checks` runs unit tests, lint, and type checking; `E2E
-tests` runs Playwright. These checks are used in Vercel to block promotion if one fails.
+Separate workflows run unit tests, lint, type checking, and Playwright on pushes
+to `main`. Require them in Vercel to block promotion if any fail.
 
 ## Production build
 

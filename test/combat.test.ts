@@ -2,6 +2,55 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { withGameFixture } from "./support/game-fixture.js";
 
+test("a player attack message identifies the weapon used", async () => {
+  await withGameFixture(
+    async ({ db, session }) => {
+      const [{ id: ratId }] = await db.rows<{ id: number }>(`
+        select id from creature.creatures where kind = 'rat' order by id limit 1
+      `);
+
+      await session.executeCommand(() =>
+        db.rows(`
+          select game.attack(
+            (select id from item.items
+             where holder_id = (select id from creature.creatures where kind = 'hero')
+               and kind = 'sword' limit 1),
+            ${ratId}
+          )
+        `),
+      );
+
+      const messages = await db.rows<{ msg: string }>(`
+        select msg from clock.log where msg like 'You %'
+      `);
+      assert.ok(messages.some((message) => message.msg.includes("Cave sword")));
+    },
+    {
+      setup: async (db) => {
+        await db.exec(`
+          update creature.creatures target
+          set (x, y) = (
+            select cell.x, cell.y
+            from creature.creatures hero
+            join map.cell cell
+              on cell.walkable
+             and abs(cell.x - hero.x) + abs(cell.y - hero.y) = 1
+            where hero.kind = 'hero'
+              and not exists (
+                select 1 from creature.creatures occupant
+                where (occupant.x, occupant.y) = (cell.x, cell.y)
+              )
+            limit 1
+          )
+          where target.id = (
+            select id from creature.creatures where kind = 'rat' order by id limit 1
+          )
+        `);
+      },
+    },
+  );
+});
+
 test("a sword attack damages one adjacent target selected by subquery", async () => {
   await withGameFixture(
     async ({ db, session }) => {

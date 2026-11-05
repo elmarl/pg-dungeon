@@ -110,7 +110,8 @@ with
 create function creature.hit (
   attacker creature.creatures,
   victim creature.creatures,
-  weapon_damage int default null
+  weapon_damage int default null,
+  weapon_name text default null
 ) returns void language plpgsql as $$
 declare
   dmg     int := coalesce(weapon_damage, (select s.dmg from creature.species s where s.kind = attacker.kind));
@@ -122,10 +123,20 @@ begin
     perform clock.say(format('The %s hits you for %s.', attacker.kind, dmg));
     if hp_left <= 0 then perform clock.say('You die. Use \rewind to turn back time.'); end if;
   elsif hp_left > 0 then
-    perform clock.say(format('You hit the %s.', victim.kind));
+    perform clock.say(
+      case when weapon_name is null
+        then format('You hit the %s.', victim.kind)
+        else format('You hit the %s with your %s.', victim.kind, weapon_name)
+      end
+    );
   else
     delete from creature.creatures where id = victim.id;
-    perform clock.say(format('You kill the %s.', victim.kind));
+    perform clock.say(
+      case when weapon_name is null
+        then format('You kill the %s.', victim.kind)
+        else format('You kill the %s with your %s.', victim.kind, weapon_name)
+      end
+    );
     if not exists (select 1 from creature.creatures where kind <> 'hero') then
       perform clock.say('The cave is quiet. You win.');
     end if;

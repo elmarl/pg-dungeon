@@ -145,11 +145,11 @@ begin
         and point(target.x, target.y) <-> point(victim.x, victim.y) <= weapon.blast_radius
       order by target.id
     loop
-      perform creature.hit(me, affected, weapon.damage);
+      perform creature.hit(me, affected, weapon.damage, weapon.name);
       hits := hits + 1;
     end loop;
   else
-    perform creature.hit(me, victim, weapon.damage);
+    perform creature.hit(me, victim, weapon.damage, weapon.name);
     hits := 1;
   end if;
 

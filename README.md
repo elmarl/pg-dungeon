@@ -6,7 +6,7 @@ All the game rules and entities live in SQL, so be ready to explore what's avail
 
 RLS protects fog of war, and foreign keys ensure creatures stay on walkable tiles.
 
-![pg-dungeon](image.png)
+![pg-dungeon gameplay](recordings/gameplay.gif)
 
 ```sh
 npm install
@@ -20,6 +20,14 @@ npm run format:check
 `npm run format` uses Prettier for app files and `sql-formatter` for PostgreSQL files. Staged SQL files are formatted automatically before commit.
 
 Tests live in `test/`, split by domain. Shared database setup is in `test/support/`.
+
+## Record a gameplay GIF
+
+Run a short local game and save an animated GIF to `recordings/gameplay.gif`:
+
+```sh
+npm run record:gameplay
+```
 
 ## Browser smoke test
 

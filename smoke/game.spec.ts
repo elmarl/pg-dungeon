@@ -29,8 +29,8 @@ async function submitCommand(page: Page, command: string): Promise<void> {
 async function startGame(page: Page): Promise<void> {
   const response = await page.goto("/");
   expect(response?.ok()).toBeTruthy();
-  await expect(page.locator("#map")).toBeAttached();
   await expect(page.locator("#loading")).toBeHidden({ timeout: 60_000 });
+  await expect(page.locator("#map")).toContainText("@", { timeout: 60_000 });
 }
 
 test("the game starts and renders its map and status", async ({ page }) => {

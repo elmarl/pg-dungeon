@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const deployedUrl = process.env.SMOKE_BASE_URL;
+const vercelTrustedOidcToken = process.env.VERCEL_TRUSTED_OIDC_TOKEN;
 const localUrl = "http://127.0.0.1:4173";
 
 export default defineConfig({
@@ -9,6 +10,13 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: deployedUrl ?? localUrl,
+    ...(vercelTrustedOidcToken
+      ? {
+          extraHTTPHeaders: {
+            "x-vercel-trusted-oidc-idp-token": vercelTrustedOidcToken,
+          },
+        }
+      : {}),
     trace: "retain-on-failure",
   },
   projects: [

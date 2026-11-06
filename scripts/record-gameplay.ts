@@ -2,14 +2,15 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
-import { expect, chromium, type Page } from "@playwright/test";
-import { PNG } from "pngjs";
+import { chromium, expect, type Page } from "@playwright/test";
 import encoder from "gifenc";
+import { PNG } from "pngjs";
 import { createServer } from "vite";
+
 import {
-  planNextAction,
   type Action,
   type GameState,
+  planNextAction,
 } from "./gameplay-plan.js";
 
 const { GIFEncoder, applyPalette, quantize } = encoder;

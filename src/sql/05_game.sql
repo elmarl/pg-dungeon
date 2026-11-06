@@ -42,6 +42,10 @@ set
 declare
   me creature.creatures := creature.hero();
 begin
+  if coalesce((dx, dy) not in ((1, 0), (-1, 0), (0, 1), (0, -1)), true) then
+  return false;
+
+  end if;
   if me.hp <= 0 then return false; end if;
 
   begin
@@ -57,7 +61,7 @@ begin
   return true;
 end $$;
 
-comment on function game.move (int, int) is 'Attempt to move by dx and dy map cells, for example game.move(1, 0) moves east. A successful move costs a turn.';
+comment on function game.move (int, int) is 'Attempt to move one cell north, south, east, or west, for example game.move(1, 0) moves east. Waiting, diagonal movement, and other offsets are rejected. A successful move costs a turn.';
 
 create function game.pick_up (item_id int) returns void language plpgsql security definer
 set

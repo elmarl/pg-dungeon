@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { createHistory } from "../src/console/history.js";
 
 function createPanelElement(): { innerHTML: string } {

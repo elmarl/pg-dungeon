@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { isRefusedCommand } from "../src/console/console.js";
 
 test("SQL comments are refused so they cannot hide transaction commands", () => {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { planNextAction, type GameState } from "../scripts/gameplay-plan.js";
+import { type GameState, planNextAction } from "../scripts/gameplay-plan.js";
 
 const state: GameState = {
   hero: { id: 1, x: 2, y: 2, hp: 30 },

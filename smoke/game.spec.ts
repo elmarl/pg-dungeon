@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const MOVE_TO_ADJACENT_FLOOR = `
   with hero as (

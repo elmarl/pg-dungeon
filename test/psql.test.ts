@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { runPsqlCommand } from "../src/console/psql.js";
 import { withGameFixture } from "./support/game-fixture.js";
 

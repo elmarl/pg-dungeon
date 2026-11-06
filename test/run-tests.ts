@@ -3,6 +3,7 @@ import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { createGameTemplate } from "./support/game-fixture.js";
 
 async function runTestFiles(): Promise<number> {

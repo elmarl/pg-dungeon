@@ -128,7 +128,7 @@ where item.holder_id is null
   and abs(item.x - hero.x) + abs(item.y - hero.y) <= 1;
 ```
 
-Use the returned ID in `select game.pick_up(ID);`. If an item is farther away, move toward its `(x, y)` coordinates with `game.move(dx, dy)` first. `holder_id IS NULL` selects floor items. `holder_id = (select id from creature.creatures where kind = 'hero')` selects carried items.
+Use the returned ID in `select game.pick_up(ID);`. If an item is farther away, move toward its `(x, y)` coordinates one cell at a time with `game.move(dx, dy)`, using an offset such as `(1, 0)` or `(0, -1)`. `holder_id IS NULL` selects floor items. `holder_id = (select id from creature.creatures where kind = 'hero')` selects carried items.
 
 Weapons are items in `item.items`. A sword must be used next to its target, a bow attacks one visible enemy at range, and a firebomb damages enemies around its selected target:
 

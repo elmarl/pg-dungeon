@@ -1,8 +1,10 @@
-import { PGlite } from "@electric-sql/pglite";
 import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+
+import { PGlite } from "@electric-sql/pglite";
+
 import type { DbRow, GameDatabase } from "../../src/db.js";
-import { startSession, type Session } from "../../src/session.js";
+import { type Session, startSession } from "../../src/session.js";
 
 export interface GameFixture {
   database: PGlite;

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { escapeHtml } from "../src/html.js";
 
 test("escapeHtml replaces HTML-sensitive characters", () => {

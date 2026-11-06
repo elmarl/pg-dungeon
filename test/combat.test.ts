@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { withGameFixture } from "./support/game-fixture.js";
 
 test("a player attack message identifies the weapon used", async () => {

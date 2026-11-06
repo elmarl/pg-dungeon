@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
+import { moveHeroOneCell } from "./support/game-actions.js";
 import { withGameFixture } from "./support/game-fixture.js";
 
 test("rewinding restores the previous turn and increments the rewind counter", async () => {
   await withGameFixture(async ({ db, session }) => {
-    await session.executeCommand(() => db.rows("select game.move(0, 0)"));
+    await moveHeroOneCell(db, session);
     const [{ turn: turnBeforeRewind }] = await db.rows<{ turn: number }>(
       "select turn from screen.status",
     );

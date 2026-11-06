@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DbRow, GameDatabase } from "../src/db.js";
+
 import { mountConsole } from "../src/console/console.js";
+import type { DbRow, GameDatabase } from "../src/db.js";
 import type { Session } from "../src/session.js";
 
 type KeydownHandler = (event: KeyboardEvent) => void;

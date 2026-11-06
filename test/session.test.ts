@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
+import { moveHeroOneCell } from "./support/game-actions.js";
 import { withGameFixture } from "./support/game-fixture.js";
 
 test("a failed console query leaves the game transaction usable", async () => {
@@ -15,7 +17,7 @@ test("a failed console query leaves the game transaction usable", async () => {
 
 test("a successful console action persists and creates an undo turn", async () => {
   await withGameFixture(async ({ db, session }) => {
-    await session.executeCommand(() => db.rows("select game.move(0, 0)"));
+    await moveHeroOneCell(db, session);
     const [{ turn }] = await db.rows<{ turn: number }>(
       "select turn from screen.status",
     );
@@ -39,7 +41,7 @@ test("a failed move rolls back to its turn savepoint", async () => {
 test("a failed rewind leaves the game transaction usable", async () => {
   await withGameFixture(
     async ({ db, session }) => {
-      await session.executeCommand(() => db.rows("select game.move(0, 0)"));
+      await moveHeroOneCell(db, session);
       await assert.rejects(session.rewind(), /division by zero/);
       const [{ turn }] = await db.rows<{ turn: number }>(
         "select turn from screen.status",

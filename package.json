@@ -38,7 +38,7 @@
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "gifenc": "^1.0.3",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.6",
+    "lint-staged": "^17.6.0",
     "pngjs": "^7.0.0",
     "prettier": "^3.9.10",
     "sql-formatter": "^15.9.0",

@@ -72,17 +72,12 @@ $$;
 create materialized view creature.scent as
 with recursive
   flood (x, y, d) as (
-    with
-      hero_pos as (
-        select
-          creature.hero () as hero
-      )
     select
       (hero).x,
       (hero).y,
       0
     from
-      hero_pos
+      creature.hero () as hero
     union
     select
       c.x,
@@ -116,6 +111,7 @@ create function creature.hit (
 declare
   dmg     int := coalesce(weapon_damage, (select s.dmg from creature.species s where s.kind = attacker.kind));
   hp_left int;
+  hit_suffix text := case when weapon_name is null then '' else format(' with your %s', weapon_name) end;
 begin
   update creature.creatures set hp = hp - dmg where id = victim.id returning hp into hp_left;
 
@@ -124,18 +120,11 @@ begin
     if hp_left <= 0 then perform clock.say('You die. Use \rewind to turn back time.'); end if;
   elsif hp_left > 0 then
     perform clock.say(
-      case when weapon_name is null
-        then format('You hit the %s.', victim.kind)
-        else format('You hit the %s with your %s.', victim.kind, weapon_name)
-      end
+      format('You hit the %s%s.', victim.kind, hit_suffix)
     );
   else
     delete from creature.creatures where id = victim.id;
-    perform clock.say(
-      case when weapon_name is null
-        then format('You kill the %s.', victim.kind)
-        else format('You kill the %s with your %s.', victim.kind, weapon_name)
-      end
+      perform clock.say(format('You kill the %s%s.', victim.kind, hit_suffix)
     );
     if not exists (select 1 from creature.creatures where kind <> 'hero') then
       perform clock.say('The cave is quiet. You win.');
@@ -147,14 +136,17 @@ create function creature.monsters_act () returns void language plpgsql as $$
 declare
   m    creature.creatures;
   step record;
+  hero creature.creatures;
 begin
   refresh materialized view creature.scent;
 
   for m in select * from creature.creatures where kind <> 'hero' order by id loop
-    exit when (creature.hero()).hp <= 0;
+    hero := creature.hero();
 
-    if abs(m.x - (creature.hero()).x) + abs(m.y - (creature.hero()).y) = 1 then
-      perform creature.hit(m, creature.hero());
+    exit when (hero).hp <= 0;
+
+    if abs(m.x - (hero).x) + abs(m.y - (hero).y) = 1 then
+      perform creature.hit(m, hero);
       continue;
     end if;
 

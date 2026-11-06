@@ -86,3 +86,43 @@ test("a monster attacks after the hero moves next to it", async () => {
     },
   );
 });
+
+test("monsters stop acting after the hero dies", async () => {
+  await withGameFixture(
+    async ({ db, session }) => {
+      await session.executeCommand(() => db.rows("select game.move(0, 1)"));
+
+      const [{ hitCount }] = await db.rows<{ hitCount: number }>(`
+        select count(*)::int as "hitCount"
+        from clock.log
+        where msg like 'The % hits you for %.'
+      `);
+      assert.equal(hitCount, 1, "only the first monster should attack");
+    },
+    {
+      setup: async (db) => {
+        await db.exec(`
+          delete from creature.creatures where kind <> 'hero';
+          update creature.creatures set hp = 1 where kind = 'hero';
+
+          insert into map.cell (x, y, walkable)
+          select hero.x + positions.dx, hero.y + 1, true
+          from creature.creatures hero
+          cross join (values (-1), (0), (1)) as positions(dx)
+          where hero.kind = 'hero'
+          on conflict (x, y) do update set walkable = excluded.walkable;
+
+          insert into creature.creatures (kind, hp, x, y)
+          select 'ogre', 12, hero.x - 1, hero.y + 1
+          from creature.creatures hero
+          where hero.kind = 'hero';
+
+          insert into creature.creatures (kind, hp, x, y)
+          select 'rat', 4, hero.x + 1, hero.y + 1
+          from creature.creatures hero
+          where hero.kind = 'hero';
+        `);
+      },
+    },
+  );
+});

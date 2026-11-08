@@ -1,6 +1,6 @@
 # pg-dungeon
 
-A small cave crawler where PostgreSQL is the game engine. I wanted to exercise writing sql faster and to experiment with advanced PG features, so I decided to make it into a game. The game runs on the browser using [PGlite](https://electric-sql.com/product/pglite).
+A small cave crawler where PostgreSQL is the game engine. I wanted to exercise writing sql faster and to experiment with advanced PG features, so I decided to make it into a game. The game runs on the browser using [PGlite](https://github.com/electric-sql/pglite).
 
 All the game rules and entities live in SQL, so be ready to explore what's available using \dn, \df etc. Typescript is here to init the db, manage the console and render the game.
 
